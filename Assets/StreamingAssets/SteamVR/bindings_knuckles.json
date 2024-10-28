@@ -1,0 +1,60 @@
+{
+  "app_key": "application.generated.unity.vrobsremote.exe",
+  "bindings": {
+    "/actions/buggy": {
+      "chords": [],
+      "poses": [],
+      "haptics": [],
+      "sources": [],
+      "skeleton": []
+    },
+    "/actions/default": {
+      "chords": [],
+      "poses": [],
+      "haptics": [],
+      "sources": [],
+      "skeleton": []
+    },
+    "/actions/platformer": {
+      "chords": [],
+      "poses": [],
+      "haptics": [],
+      "sources": [],
+      "skeleton": []
+    },
+    "/actions/testvrbro": {
+      "chords": [],
+      "poses": [],
+      "haptics": [],
+      "sources": [],
+      "skeleton": []
+    },
+    "/actions/vrbro": {
+      "chords": [],
+      "poses": [],
+      "haptics": [],
+      "skeleton": [],
+      "sources": [
+        {
+          "path": "/user/hand/left/input/a",
+          "mode": "button",
+          "parameters": {
+            "long_press_delay": "3.0",
+            "touchy_click": "false"
+          },
+          "inputs": {
+            "long": {
+              "output": "/actions/vrbro/in/savebuffer"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "category" : "steamvr_input",
+  "controller_type": "knuckles",
+  "description": "Hold A for 3 seconds to save the OBS replay buffer.",
+  "name": "VRBro knuckles_default",
+  "options" : {},
+  "simulated_actions" : []
+}

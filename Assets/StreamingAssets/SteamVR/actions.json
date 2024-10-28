@@ -1,0 +1,31 @@
+{
+  "actions": [
+    {
+      "name": "/actions/vrbro/in/SaveBuffer",
+      "type": "boolean",
+      "requirement": "suggested"
+    },
+    {
+      "name": "/actions/vrbro/out/Haptic",
+      "type": "vibration"
+    }
+  ],
+  "action_sets": [
+    {
+      "name": "/actions/vrbro",
+      "usage": "leftright"
+    }
+  ],
+  "default_bindings": [
+    {
+      "controller_type": "knuckles",
+      "binding_url": "bindings_knuckles.json"
+    }
+  ],
+  "localization": [
+    {
+      "language_tag": "en_US",
+      "/actions/vrbro/in/SaveBuffer": "Save Replay Buffer"
+    }
+  ]
+}
