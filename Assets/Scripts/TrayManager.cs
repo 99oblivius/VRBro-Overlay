@@ -48,26 +48,40 @@ public class Settings {
 }
 
 public class CustomContextMenuStrip : ContextMenuStrip {
-    private static readonly System.Drawing.Color MenuBackColor = ColorTranslator.FromHtml("#36393F");
+    private static readonly System.Drawing.Color MenuBackColor = ColorTranslator.FromHtml("#181819");
     private static readonly System.Drawing.Color MenuForeColor = System.Drawing.Color.White;
     private static readonly System.Drawing.Color ItemHoverColor = ColorTranslator.FromHtml("#2A3A75");
     private static readonly System.Drawing.Color ItemPressColor = ColorTranslator.FromHtml("#101010");
     private static readonly System.Drawing.Color SeparatorColor = ColorTranslator.FromHtml("#28282A");
+    private const int MenuItemPadding = 5;
+    private const int MenuCornerRadius = 4;
+    private static readonly System.Drawing.Font MenuItemFont = new("Segoe UI", 9F);
 
     public CustomContextMenuStrip() {
         Renderer = new CustomContextMenuRenderer();
         BackColor = MenuBackColor;
         ForeColor = MenuForeColor;
         ShowImageMargin = false;
+        Padding = new Padding(2);
+        Font = MenuItemFont;
         
         Opening += (s, e) => {
             foreach (ToolStripItem item in Items) {
                 if (item is ToolStripMenuItem menuItem) {
                     menuItem.BackColor = MenuBackColor;
                     menuItem.ForeColor = MenuForeColor;
+                    menuItem.Padding = new Padding(MenuItemPadding, 2, MenuItemPadding, 4);
+                    menuItem.Font = MenuItemFont;
                 }
             }
         };
+    }
+
+    protected override void Dispose(bool disposing) {
+        if (disposing) {
+            MenuItemFont?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     private class CustomContextMenuRenderer : ToolStripProfessionalRenderer {
@@ -76,8 +90,10 @@ public class CustomContextMenuStrip : ContextMenuStrip {
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e) {
             var g = e.Graphics;
             var bounds = e.AffectedBounds;
+            using var path = CreateRoundedRectanglePath(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1, MenuCornerRadius);
             using var pen = new Pen(SeparatorColor);
-            g.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.DrawPath(pen, path);
         }
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e) {
@@ -86,12 +102,16 @@ public class CustomContextMenuStrip : ContextMenuStrip {
             var bounds = e.Item.ContentRectangle;
 
             if (menuItem != null) {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                
                 if (menuItem.Selected) {
+                    using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
                     using var brush = new SolidBrush(ItemHoverColor);
-                    g.FillRectangle(brush, bounds);
+                    g.FillPath(brush, path);
                 } else if (menuItem.Pressed) {
+                    using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
                     using var brush = new SolidBrush(ItemPressColor);
-                    g.FillRectangle(brush, bounds);
+                    g.FillPath(brush, path);
                 } else {
                     using var brush = new SolidBrush(MenuBackColor);
                     g.FillRectangle(brush, bounds);
@@ -104,7 +124,23 @@ public class CustomContextMenuStrip : ContextMenuStrip {
             var bounds = e.Item.ContentRectangle;
             var y = bounds.Height / 2;
             using var pen = new Pen(SeparatorColor);
-            g.DrawLine(pen, bounds.Left, y, bounds.Right, y);
+            g.DrawLine(pen, bounds.Left + MenuItemPadding, y, bounds.Right - MenuItemPadding, y);
+        }
+
+        private static System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(float x, float y, float width, float height, float radius) {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            
+            // Top left arc
+            path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+            // Top right arc
+            path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+            // Bottom right arc
+            path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+            // Bottom left arc
+            path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseFigure();
+            
+            return path;
         }
     }
 
@@ -193,6 +229,8 @@ public class TrayManager : MonoBehaviour {
             ContextMenuStrip = trayMenu,
             Visible = true
         };
+
+        trayIcon.DoubleClick += (s, e) => OnOpenSettings(s, e);
 
         string iconPath = Path.Combine(UnityEngine.Application.streamingAssetsPath, "Textures", "VRBro_logo-32x32.ico");
         try {
