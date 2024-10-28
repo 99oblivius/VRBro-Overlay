@@ -92,4 +92,32 @@ public class Network
     public async Task<int> IsReplayBufferActive() {
         return await SendPacket(ActionTypeRequest.ReplayBufferActive);
     }
+
+    public async Task<int> StartRecording() {
+        return await SendPacket(ActionTypeEvent.StartRecording);
+    }
+
+    public async Task<int> StopRecording() {
+        return await SendPacket(ActionTypeEvent.StopRecording);
+    }
+
+    public async Task<int> StartStreaming() {
+        return await SendPacket(ActionTypeEvent.StartStreaming);
+    }
+
+    public async Task<int> StopStreaming() {
+        return await SendPacket(ActionTypeEvent.StopStreaming);
+    }
+
+    public async Task<int> SplitRecording() {
+        return await SendPacket(ActionTypeEvent.RecordingSplitFile);
+    }
+
+    public async Task<int> IsRecordingActive() {
+        return await SendPacket(ActionTypeRequest.RecordingActive);
+    }
+
+    public async Task<int> IsStreamingActive() {
+        return await SendPacket(ActionTypeRequest.StreamingActive);
+    }
 }

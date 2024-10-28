@@ -83,7 +83,7 @@ public class VRBroDash : MonoBehaviour
             }
         }
 
-        float newAmplitude = VRBro.bufferactive ? 0.5f : 0.0f;
+        float newAmplitude = VRBro.bufferActive ? 0.5f : 0.0f;
         if (newAmplitude != BufferActiveAmplitude) {
             BufferActiveAmplitude = newAmplitude;
             imageStartStopBuffer.material.SetFloat("_WaveAmplitude", BufferActiveAmplitude);
@@ -91,9 +91,8 @@ public class VRBroDash : MonoBehaviour
     }
 
     private Button GetButtonByPosition(Vector2 position) {
-        var pointerEventData = new PointerEventData(eventSystem);
-        pointerEventData.position = position;
-        
+        var pointerEventData = new PointerEventData(eventSystem) { position = position };
+
         var raycastResultList = new List<RaycastResult>();
         graphicRaycaster.Raycast(pointerEventData, raycastResultList);
         var raycastResult = raycastResultList.Find(element => element.gameObject.GetComponent<Button>());
