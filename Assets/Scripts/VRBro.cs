@@ -39,6 +39,7 @@ public class VRBro : MonoBehaviour
 
     private async void Start() {
         settings = Settings.Load();
+        bindingsEnabled = settings.BindingsEnabled;
 
         OVRUtil.System.Init();
         overlayHandle = Overlay.Create("VRBroKey", "VRBro");
@@ -84,7 +85,6 @@ public class VRBro : MonoBehaviour
             int rsp = await _net.StopRecording();
             recordingActive = rsp != 1 && recordingActive;
         }
-
         if (splitRecording) {
             splitRecording = false;
             await _net.SplitRecording();

@@ -6,47 +6,6 @@ using UnityEngine;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Settings {
-    private const string SettingsFile = "Config/network_settings.json";
-    private static string SettingsPath => Path.Combine(UnityEngine.Application.persistentDataPath, SettingsFile);
-
-    [SerializeField]
-    private string serverAddress = "127.0.0.1";
-    [SerializeField]
-    private int serverPort = 33390;
-
-    public string ServerAddress {
-        get => serverAddress;
-        set => serverAddress = value;
-    }
-
-    public int ServerPort {
-        get => serverPort;
-        set => serverPort = value;
-    }
-
-    public static Settings Load() {
-        try {
-            if (File.Exists(SettingsPath)) {
-                string json = File.ReadAllText(SettingsPath);
-                return JsonUtility.FromJson<Settings>(json) ?? new Settings();
-            }
-        } catch (Exception ex) {
-            Debug.LogError($"Failed to load settings: {ex.Message}");
-        }
-        return new Settings();
-    }
-
-    public void Save() {
-        try {
-            string json = JsonUtility.ToJson(this, true);
-            File.WriteAllText(SettingsPath, json);
-        } catch (Exception ex) {
-            Debug.LogError($"Failed to save settings: {ex.Message}");
-        }
-    }
-}
-
 public class CustomContextMenuStrip : ContextMenuStrip {
     private static readonly System.Drawing.Color MenuBackColor = ColorTranslator.FromHtml("#181819");
     private static readonly System.Drawing.Color MenuForeColor = System.Drawing.Color.White;

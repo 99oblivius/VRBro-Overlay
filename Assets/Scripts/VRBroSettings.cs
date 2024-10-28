@@ -5,32 +5,46 @@ public class VRBroSettings : MonoBehaviour
 {
     [SerializeField] private VRBro VRBro;
     [SerializeField] private Image imageBindingsEnabled;
-    [SerializeField] private Image imageRecordingParent;
-    [SerializeField] private Image imageStreamingParent;
     [SerializeField] private SplitRecordingButton splitRecordingButton;
+    [SerializeField] private StatusTracker statusTracker;
 
+    private Settings settings;
     private static readonly Color32 ActiveColor = new(116, 132, 117, 255);   // Green
     private static readonly Color32 InactiveColor = new(132, 117, 127, 255); // Red
+
+    private void Awake() {
+        settings = Settings.Load();
+        imageBindingsEnabled.color = settings.BindingsEnabled ? ActiveColor : InactiveColor;
+    }
 
     public void OnEnableButtonClick() {
         VRBro.bindingsEnabled = true;
         imageBindingsEnabled.color = ActiveColor;
+        settings.BindingsEnabled = true;
+        settings.Save();
     }
 
     public void OnDisableButtonClick() {
         VRBro.bindingsEnabled = false;
         imageBindingsEnabled.color = InactiveColor;
+        settings.BindingsEnabled = false;
+        settings.Save();
     }
 
-    public void OnStartBufferButtonClick() { VRBro.startBuffer = true; }
+    public async void OnStartBufferButtonClick() {
+        await statusTracker.StartReplayBuffer();
+    }
 
-    public void OnStopBufferButtonClick() { VRBro.stopBuffer = true; }
+    public async void OnStopBufferButtonClick() {
+        await statusTracker.StopReplayBuffer();
+    }
 
-    public void OnRecordingButtonClick() {
+    public async void OnRecordingButtonClick()
+    {
         if (VRBro.recordingActive) {
-            VRBro.stopRecording = true;
+            await statusTracker.StopRecording();
         } else {
-            VRBro.startRecording = true;
+            await statusTracker.StartRecording();
         }
     }
 
@@ -43,21 +57,12 @@ public class VRBroSettings : MonoBehaviour
         }
     }
 
-    public void OnStreamingButtonClick() {
+    public async void OnStreamingButtonClick()
+    {
         if (VRBro.streamingActive) {
-            VRBro.stopStreaming = true;
+            await statusTracker.StopStreaming();
         } else {
-            VRBro.startStreaming = true;
-        }
-    }
-
-    private void Update() {
-        if (imageRecordingParent != null) {
-            imageRecordingParent.color = VRBro.recordingActive ? ActiveColor : InactiveColor;
-        }
-
-        if (imageStreamingParent != null) {
-            imageStreamingParent.color = VRBro.streamingActive ? ActiveColor : InactiveColor;
+            await statusTracker.StartStreaming();
         }
     }
 }

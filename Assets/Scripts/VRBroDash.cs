@@ -4,13 +4,10 @@ using OVRUtil;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
-using System;
 
 public class VRBroDash : MonoBehaviour
 {
     [SerializeField] private VRBro VRBro;
-    [SerializeField] private Image imageStartStopBuffer;
-    public Camera m_Camera;
     public RenderTexture renderTexture;
     public GraphicRaycaster graphicRaycaster;
     public EventSystem eventSystem;
@@ -21,12 +18,12 @@ public class VRBroDash : MonoBehaviour
     public Button button2;
     public Button button3;
     public Button button4;
+    public Button button5;
+    public Button button6;
+    public Button button7;
 
     private ulong dashboardHandle = OpenVR.k_ulOverlayHandleInvalid;
     private ulong thumbnailHandle = OpenVR.k_ulOverlayHandleInvalid;
-
-    private float BufferActiveAmplitude = 0.5f;
-
     
     private void Start()
     {
@@ -63,7 +60,7 @@ public class VRBroDash : MonoBehaviour
         while (OpenVR.Overlay.PollNextOverlayEvent(dashboardHandle, ref vrEvent, uncbVREvent)) {
             switch (vrEvent.eventType) {
             case (uint)EVREventType.VREvent_MouseMove:
-                Button[] buttons = {button1, button2, button3, button4};
+                Button[] buttons = {button1, button2, button3, button4, button5, button6, button7};
                 foreach (var b in buttons) {
                     b.gameObject.GetComponent<Image>().color = new Color32(61, 68, 80, 255);
                 }
@@ -81,12 +78,6 @@ public class VRBroDash : MonoBehaviour
                 };
                 break;
             }
-        }
-
-        float newAmplitude = VRBro.bufferActive ? 0.5f : 0.0f;
-        if (newAmplitude != BufferActiveAmplitude) {
-            BufferActiveAmplitude = newAmplitude;
-            imageStartStopBuffer.material.SetFloat("_WaveAmplitude", BufferActiveAmplitude);
         }
     }
 

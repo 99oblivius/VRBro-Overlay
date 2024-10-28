@@ -802,7 +802,7 @@ GameObject:
   - component: {fileID: 411475588}
   - component: {fileID: 411475587}
   m_Layer: 0
-  m_Name: SaveBuffer
+  m_Name: Bindings
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2302,7 +2302,7 @@ GameObject:
   - component: {fileID: 1330479513}
   - component: {fileID: 1330479512}
   m_Layer: 0
-  m_Name: StartStop
+  m_Name: ReplayBuffer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2534,15 +2534,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   VRBro: {fileID: 1693267238}
-  imageStartStopBuffer: {fileID: 1330479512}
-  m_Camera: {fileID: 0}
   renderTexture: {fileID: 8400000, guid: e9016c63c492c284a828f743c0c8f3af, type: 2}
   graphicRaycaster: {fileID: 1598672894}
   eventSystem: {fileID: 440882924}
   button1: {fileID: 368670292}
   button2: {fileID: 368661638}
-  button3: {fileID: 1251899992}
-  button4: {fileID: 1199841109}
+  button3: {fileID: 79544217}
+  button4: {fileID: 976644107}
+  button5: {fileID: 1251899992}
+  button6: {fileID: 1199841109}
+  button7: {fileID: 1877617813}
 --- !u!4 &1455189225
 Transform:
   m_ObjectHideFlags: 0
@@ -3397,6 +3398,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2069514573}
   - component: {fileID: 2069514572}
+  - component: {fileID: 2069514574}
   m_Layer: 0
   m_Name: Settings
   m_TagString: Untagged
@@ -3418,9 +3420,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   VRBro: {fileID: 1693267238}
   imageBindingsEnabled: {fileID: 411475587}
-  imageRecordingParent: {fileID: 701348848}
-  imageStreamingParent: {fileID: 778599945}
   splitRecordingButton: {fileID: 1877617816}
+  statusTracker: {fileID: 2069514574}
 --- !u!4 &2069514573
 Transform:
   m_ObjectHideFlags: 0
@@ -3436,6 +3437,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2069514574
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2069514571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0f333ece44a83943a71032b79a94f01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  VRBro: {fileID: 1693267238}
+  recordingIndicator: {fileID: 701348848}
+  streamingIndicator: {fileID: 778599945}
+  bufferIndicator: {fileID: 1330479512}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
