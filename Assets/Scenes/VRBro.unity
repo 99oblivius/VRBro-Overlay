@@ -956,8 +956,8 @@ Camera:
   m_GameObject: {fileID: 536680779}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 3
-  m_BackGroundColor: {r: 0.75725347, g: 0.79406697, b: 0.8584906, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.23921569, g: 0.26666668, b: 0.3137255, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -1888,18 +1888,18 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1181459235}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1877617812}
   m_Father: {fileID: 1598672893}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -410.3, y: 88.1}
-  m_SizeDelta: {x: 323.3, y: 156.59}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0.5}
+  m_AnchorMax: {x: 0, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 169.64}
+  m_SizeDelta: {x: 323.3, y: 156.58997}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &1181459237
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3267,17 +3267,17 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1877617811}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -2}
-  m_LocalScale: {x: 0.99959236, y: 0.99959236, z: 0.99959236}
-  m_ConstrainProportionsScale: 0
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 1838168586}
   m_Father: {fileID: 1181459236}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -4, y: -0.35998675}
-  m_SizeDelta: {x: 261.32, y: 84.93}
+  m_AnchoredPosition: {x: -4, y: 0}
+  m_SizeDelta: {x: 261.32, y: 110}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1877617813
 MonoBehaviour:
@@ -3386,8 +3386,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   VRBro: {fileID: 1693267238}
-  recordButton: {fileID: 1877617813}
   canvasGroup: {fileID: 1181459239}
+  text: {fileID: 1838168587}
+  offsetX: 50
 --- !u!1 &2069514571
 GameObject:
   m_ObjectHideFlags: 0
@@ -3450,9 +3451,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   VRBro: {fileID: 1693267238}
+  bufferIndicator: {fileID: 1330479512}
   recordingIndicator: {fileID: 701348848}
   streamingIndicator: {fileID: 778599945}
-  bufferIndicator: {fileID: 1330479512}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

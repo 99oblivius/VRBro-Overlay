@@ -78,7 +78,7 @@ public class VRBro : MonoBehaviour
         if (startRecording) {
             startRecording = false;
             int rsp = await _net.StartRecording();
-            recordingActive = rsp == 1;
+            recordingActive = rsp == 1 || (rsp != 1 && recordingActive);
         }
         if (stopRecording) {
             stopRecording = false;
@@ -93,7 +93,7 @@ public class VRBro : MonoBehaviour
         if (startStreaming) {
             startStreaming = false;
             int rsp = await _net.StartStreaming();
-            streamingActive = rsp == 1;
+            streamingActive = rsp == 1 || (rsp != 1 && streamingActive);
         }
         if (stopStreaming) {
             stopStreaming = false;

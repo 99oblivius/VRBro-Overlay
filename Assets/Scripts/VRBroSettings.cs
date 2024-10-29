@@ -5,7 +5,7 @@ public class VRBroSettings : MonoBehaviour
 {
     [SerializeField] private VRBro VRBro;
     [SerializeField] private Image imageBindingsEnabled;
-    [SerializeField] private SplitRecordingButton splitRecordingButton;
+    [SerializeField] private SplitButton splitRecordingButton;
     [SerializeField] private StatusTracker statusTracker;
 
     private Settings settings;
@@ -51,9 +51,7 @@ public class VRBroSettings : MonoBehaviour
     public void OnSplitRecordingButtonClick() {
         if (VRBro.recordingActive) {
             VRBro.splitRecording = true;
-            if (splitRecordingButton != null) {
-                splitRecordingButton.OnSplitSuccessful();
-            }
+            splitRecordingButton.OnSplitButtonClick();
         }
     }
 

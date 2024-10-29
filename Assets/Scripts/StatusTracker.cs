@@ -25,13 +25,13 @@ public class StatusTracker : MonoBehaviour
     public async Task<bool> StartReplayBuffer() {
         VRBro.startBuffer = true;
 
-        for (int i = 0; i < 8; i++) {
-            await Task.Delay(400);
+        for (int i = 0; i < 12; i++) {
             int status = await VRBro.IsReplayBuffer();
             if (status == 1) {
                 bufferIndicator.material.SetFloat("_WaveAmplitude", 0.5f);
                 return true;
             }
+            await Task.Delay(250);
         }
         return false;
     }
@@ -39,13 +39,13 @@ public class StatusTracker : MonoBehaviour
     public async Task<bool> StopReplayBuffer() {
         VRBro.stopBuffer = true;
 
-        for (int i = 0; i < 8; i++) {
-            await Task.Delay(400);
+        for (int i = 0; i < 12; i++) {
             int status = await VRBro.IsReplayBuffer();
             if (status != 1) {
                 bufferIndicator.material.SetFloat("_WaveAmplitude", 0.0f);
                 return true;
             }
+            await Task.Delay(400);
         }
         return false;
     }
@@ -54,13 +54,13 @@ public class StatusTracker : MonoBehaviour
         VRBro.startRecording = true;
         recordingIndicator.color = PendingColor;
 
-        for (int i = 0; i < 8; i++) {
-            await Task.Delay(400);
+        for (int i = 0; i < 12; i++) {
             int status = await VRBro.IsRecording();
             if (status == 1) {
                 recordingIndicator.color = ActiveColor;
                 return true;
             }
+            await Task.Delay(250);
         }
         
         recordingIndicator.color = InactiveColor;
@@ -72,12 +72,12 @@ public class StatusTracker : MonoBehaviour
         recordingIndicator.color = PendingColor;
 
         for (int i = 0; i < 20; i++) {
-            await Task.Delay(500);
             int status = await VRBro.IsRecording();
             if (status != 1) {
                 recordingIndicator.color = InactiveColor;
                 return true;
             }
+            await Task.Delay(500);
         }
         
         recordingIndicator.color = ActiveColor;
@@ -88,13 +88,13 @@ public class StatusTracker : MonoBehaviour
         VRBro.startStreaming = true;
         streamingIndicator.color = PendingColor;
 
-        for (int i = 0; i < 8; i++) {
-            await Task.Delay(400);
+        for (int i = 0; i < 12; i++) {
             int status = await VRBro.IsStreaming();
             if (status == 1) {
                 streamingIndicator.color = ActiveColor;
                 return true;
             }
+            await Task.Delay(250);
         }
         
         streamingIndicator.color = InactiveColor;
@@ -105,13 +105,13 @@ public class StatusTracker : MonoBehaviour
         VRBro.stopStreaming = true;
         streamingIndicator.color = PendingColor;
 
-        for (int i = 0; i < 20; i++) {
-            await Task.Delay(500);
+        for (int i = 0; i < 10; i++) {
             int status = await VRBro.IsStreaming();
             if (status != 1) {
                 streamingIndicator.color = InactiveColor;
                 return true;
             }
+            await Task.Delay(500);
         }
         
         streamingIndicator.color = ActiveColor;

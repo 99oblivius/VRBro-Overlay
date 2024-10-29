@@ -35,7 +35,7 @@ public class VRBroDash : MonoBehaviour
         Overlay.SetFromFile(thumbnailHandle, filePath);
 
         Overlay.FlipVertical(dashboardHandle);
-        Overlay.SetSize(dashboardHandle, 0.5f);
+        Overlay.SetSize(dashboardHandle, 1.25f);
         Overlay.SetMouseScale(dashboardHandle, renderTexture.width, renderTexture.height);
 
     }
