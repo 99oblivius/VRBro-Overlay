@@ -153,7 +153,15 @@ public class TrayManager : MonoBehaviour {
     private void Awake() {
         mainThread = SynchronizationContext.Current;
         vrBro = FindFirstObjectByType<VRBro>();
+        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
         InitializeTrayIcon();
+    }
+
+    private void OnSettingsChanged() {
+        if (vrBro != null && vrBro._net != null) {
+            vrBro._net.serverAddr = Settings.Instance.ServerAddress;
+            vrBro._net.serverPort = Settings.Instance.ServerPort;
+        }
     }
 
     private void InitializeTrayIcon() {
@@ -232,6 +240,7 @@ public class TrayManager : MonoBehaviour {
         
         settingsForm?.Dispose();
         trayThread?.Join(100);
+        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
     }
 }
 
@@ -249,9 +258,16 @@ public class NetworkSettingsForm : Form {
     public NetworkSettingsForm(VRBro vrBro, TrayManager trayManager) {
         this.vrBro = vrBro;
         this.trayManager = trayManager;
-        this.settings = Settings.Load();
         InitializeComponent();
         LoadCurrentSettings();
+        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged() {
+        if (!isConnecting) {
+            ipAddressBox.Text = Settings.Instance.ServerAddress;
+            portNumeric.Value = Settings.Instance.ServerPort;
+        }
     }
 
     private void InitializeComponent() {
@@ -336,8 +352,8 @@ public class NetworkSettingsForm : Form {
 
     private void LoadCurrentSettings() {
         if (vrBro != null && vrBro._net != null) {
-            ipAddressBox.Text = settings.ServerAddress;
-            portNumeric.Value = settings.ServerPort;
+            ipAddressBox.Text = Settings.Instance.ServerAddress;
+            portNumeric.Value = Settings.Instance.ServerPort;
         }
     }
 
@@ -373,9 +389,8 @@ public class NetworkSettingsForm : Form {
                     return;
                 }
 
-                settings.ServerAddress = newAddress;
-                settings.ServerPort = newPort;
-                settings.Save();
+                Settings.Instance.ServerAddress = newAddress;
+                Settings.Instance.ServerPort = newPort;
 
                 if (trayManager != null) await trayManager.UpdateConnectionState();
                 Hide();
@@ -442,15 +457,17 @@ public class NetworkSettingsForm : Form {
     protected override void OnFormClosing(FormClosingEventArgs e) {
         if (e.CloseReason == CloseReason.UserClosing) {
             e.Cancel = true;
-            ipAddressBox.Text = settings.ServerAddress;
-            portNumeric.Value = settings.ServerPort;
+            LoadCurrentSettings();
             Hide();
         }
         base.OnFormClosing(e);
     }
 
     protected override void Dispose(bool disposing) {
-        if (disposing) connectionLock?.Dispose();
+        if (disposing) {
+            connectionLock?.Dispose();
+            Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+        }
         base.Dispose(disposing);
     }
 }

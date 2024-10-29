@@ -8,7 +8,6 @@ public class VRBroSettings : MonoBehaviour
     [SerializeField] private SplitButton splitRecordingButton;
     [SerializeField] private StatusTracker statusTracker;
 
-    private Settings settings;
     private static readonly Color32 ActiveColor = new(116, 132, 117, 255);   // Green
     private static readonly Color32 InactiveColor = new(132, 117, 127, 255); // Red
 
