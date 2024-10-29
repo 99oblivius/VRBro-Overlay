@@ -38,15 +38,14 @@ public class VRBro : MonoBehaviour
     [Range(0, 360)] public int rotationZ;
 
     private async void Start() {
-        settings = Settings.Load();
-        bindingsEnabled = settings.BindingsEnabled;
+        bindingsEnabled = Settings.Instance.BindingsEnabled;
 
         OVRUtil.System.Init();
         overlayHandle = Overlay.Create("VRBroKey", "VRBro");
 
         _net = new Network {
-            serverAddr = settings.ServerAddress,
-            serverPort = settings.ServerPort
+            serverAddr = Settings.Instance.ServerAddress,
+            serverPort = Settings.Instance.ServerPort
         };
 
         var filePath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";

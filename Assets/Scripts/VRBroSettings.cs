@@ -13,22 +13,29 @@ public class VRBroSettings : MonoBehaviour
     private static readonly Color32 InactiveColor = new(132, 117, 127, 255); // Red
 
     private void Awake() {
-        settings = Settings.Load();
-        imageBindingsEnabled.color = settings.BindingsEnabled ? ActiveColor : InactiveColor;
+        imageBindingsEnabled.color = Settings.Instance.BindingsEnabled ? ActiveColor : InactiveColor;
+        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
+    }
+
+    private void OnDestroy() {
+        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged() {
+        UpdateBindingsUI(Settings.Instance.BindingsEnabled);
+    }
+
+    private void UpdateBindingsUI(bool enabled) {
+        imageBindingsEnabled.color = enabled ? ActiveColor : InactiveColor;
+        VRBro.bindingsEnabled = enabled;
     }
 
     public void OnEnableButtonClick() {
-        VRBro.bindingsEnabled = true;
-        imageBindingsEnabled.color = ActiveColor;
-        settings.BindingsEnabled = true;
-        settings.Save();
+        Settings.Instance.BindingsEnabled = true;
     }
 
     public void OnDisableButtonClick() {
-        VRBro.bindingsEnabled = false;
-        imageBindingsEnabled.color = InactiveColor;
-        settings.BindingsEnabled = false;
-        settings.Save();
+        Settings.Instance.BindingsEnabled = false;
     }
 
     public async void OnStartBufferButtonClick() {

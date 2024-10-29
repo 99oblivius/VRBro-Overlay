@@ -18,6 +18,16 @@ public class UISettings {
 }
 
 public class Settings {
+    private static Settings instance;
+    public static Settings Instance {
+        get {
+            if (instance == null) {
+                instance = Load();
+            }
+            return instance;
+        }
+    }
+
     private const string NetworkSettingsFile = "Config/network_settings.json";
     private const string UISettingsFile = "Config/ui_settings.json";
     private static string NetworkSettingsPath => Path.Combine(Application.persistentDataPath, NetworkSettingsFile);
@@ -25,15 +35,48 @@ public class Settings {
     private NetworkSettings networkSettings;
     private UISettings uiSettings;
 
-    public string ServerAddress { get => networkSettings.ServerAddress; set => networkSettings.ServerAddress = value; }
-    public int ServerPort { get => networkSettings.ServerPort; set => networkSettings.ServerPort = value; }
-    public bool BindingsEnabled { get => uiSettings.BindingsEnabled; set => uiSettings.BindingsEnabled = value; }
+    public event Action OnSettingsChanged;
 
-    public static Settings Load() {
-        var settings = new Settings {
-            networkSettings = new NetworkSettings(),
-            uiSettings = new UISettings()
-        };
+    public string ServerAddress { 
+        get => networkSettings.ServerAddress;
+        set {
+            if (networkSettings.ServerAddress != value) {
+                networkSettings.ServerAddress = value;
+                OnSettingsChanged?.Invoke();
+                Save();
+            }
+        }
+    }
+
+    public int ServerPort { 
+        get => networkSettings.ServerPort;
+        set {
+            if (networkSettings.ServerPort != value) {
+                networkSettings.ServerPort = value;
+                OnSettingsChanged?.Invoke();
+                Save();
+            }
+        }
+    }
+
+    public bool BindingsEnabled { 
+        get => uiSettings.BindingsEnabled;
+        set {
+            if (uiSettings.BindingsEnabled != value) {
+                uiSettings.BindingsEnabled = value;
+                OnSettingsChanged?.Invoke();
+                Save();
+            }
+        }
+    }
+
+    private Settings() {
+        networkSettings = new NetworkSettings();
+        uiSettings = new UISettings();
+    }
+
+    private static Settings Load() {
+        var settings = new Settings();
 
         try {
             if (File.Exists(NetworkSettingsPath)) {
@@ -54,7 +97,7 @@ public class Settings {
         return settings;
     }
 
-    public void Save() {
+    private void Save() {
         try {
             string configDir = Path.GetDirectoryName(NetworkSettingsPath);
             if (!Directory.Exists(configDir)) Directory.CreateDirectory(configDir);
