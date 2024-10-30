@@ -1,135 +1,33 @@
 using System;
 using System.Drawing;
 using System.IO;
-using System.Windows.Forms;
-using UnityEngine;
 using System.Threading;
 using System.Threading.Tasks;
-
-public class CustomContextMenuStrip : ContextMenuStrip {
-    private static readonly System.Drawing.Color MenuBackColor = ColorTranslator.FromHtml("#181819");
-    private static readonly System.Drawing.Color MenuForeColor = System.Drawing.Color.White;
-    private static readonly System.Drawing.Color ItemHoverColor = ColorTranslator.FromHtml("#2A3A75");
-    private static readonly System.Drawing.Color ItemPressColor = ColorTranslator.FromHtml("#101010");
-    private static readonly System.Drawing.Color SeparatorColor = ColorTranslator.FromHtml("#28282A");
-    private const int MenuItemPadding = 5;
-    private const int MenuCornerRadius = 4;
-    private static readonly System.Drawing.Font MenuItemFont = new("Segoe UI", 9F);
-
-    public CustomContextMenuStrip() {
-        Renderer = new CustomContextMenuRenderer();
-        BackColor = MenuBackColor;
-        ForeColor = MenuForeColor;
-        ShowImageMargin = false;
-        Padding = new Padding(2);
-        Font = MenuItemFont;
-        
-        Opening += (s, e) => {
-            foreach (ToolStripItem item in Items) {
-                if (item is ToolStripMenuItem menuItem) {
-                    menuItem.BackColor = MenuBackColor;
-                    menuItem.ForeColor = MenuForeColor;
-                    menuItem.Padding = new Padding(MenuItemPadding, 2, MenuItemPadding, 4);
-                    menuItem.Font = MenuItemFont;
-                }
-            }
-        };
-    }
-
-    protected override void Dispose(bool disposing) {
-        if (disposing) {
-            MenuItemFont?.Dispose();
-        }
-        base.Dispose(disposing);
-    }
-
-    private class CustomContextMenuRenderer : ToolStripProfessionalRenderer {
-        public CustomContextMenuRenderer() : base(new CustomColorTable()) { }
-
-        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e) {
-            var g = e.Graphics;
-            var bounds = e.AffectedBounds;
-            using var path = CreateRoundedRectanglePath(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1, MenuCornerRadius);
-            using var pen = new Pen(SeparatorColor);
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            g.DrawPath(pen, path);
-        }
-
-        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e) {
-            var g = e.Graphics;
-            var menuItem = e.Item as ToolStripMenuItem;
-            var bounds = e.Item.ContentRectangle;
-
-            if (menuItem != null) {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                
-                if (menuItem.Selected) {
-                    using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
-                    using var brush = new SolidBrush(ItemHoverColor);
-                    g.FillPath(brush, path);
-                } else if (menuItem.Pressed) {
-                    using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
-                    using var brush = new SolidBrush(ItemPressColor);
-                    g.FillPath(brush, path);
-                } else {
-                    using var brush = new SolidBrush(MenuBackColor);
-                    g.FillRectangle(brush, bounds);
-                }
-            }
-        }
-
-        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e) {
-            var g = e.Graphics;
-            var bounds = e.Item.ContentRectangle;
-            var y = bounds.Height / 2;
-            using var pen = new Pen(SeparatorColor);
-            g.DrawLine(pen, bounds.Left + MenuItemPadding, y, bounds.Right - MenuItemPadding, y);
-        }
-
-        private static System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(float x, float y, float width, float height, float radius) {
-            var path = new System.Drawing.Drawing2D.GraphicsPath();
-            
-            // Top left arc
-            path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
-            // Top right arc
-            path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
-            // Bottom right arc
-            path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
-            // Bottom left arc
-            path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
-            path.CloseFigure();
-            
-            return path;
-        }
-    }
-
-    private class CustomColorTable : ProfessionalColorTable {
-        public override System.Drawing.Color MenuBorder => SeparatorColor;
-        public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.Transparent;
-        public override System.Drawing.Color MenuItemSelected => ItemHoverColor;
-        public override System.Drawing.Color MenuItemSelectedGradientBegin => ItemHoverColor;
-        public override System.Drawing.Color MenuItemSelectedGradientEnd => ItemHoverColor;
-        public override System.Drawing.Color MenuItemPressedGradientBegin => ItemPressColor;
-        public override System.Drawing.Color MenuItemPressedGradientEnd => ItemPressColor;
-        public override System.Drawing.Color ToolStripDropDownBackground => MenuBackColor;
-        public override System.Drawing.Color ImageMarginGradientBegin => MenuBackColor;
-        public override System.Drawing.Color ImageMarginGradientMiddle => MenuBackColor;
-        public override System.Drawing.Color ImageMarginGradientEnd => MenuBackColor;
-    }
-}
+using System.Windows.Forms;
+using UnityEngine;
+using Color = System.Drawing.Color;
 
 public class TrayManager : MonoBehaviour {
+    private readonly CancellationTokenSource cts = new();
     private NotifyIcon trayIcon;
     private CustomContextMenuStrip trayMenu;
     private NetworkSettingsForm settingsForm;
     private SynchronizationContext mainThread;
-    private VRBro vrBro;
     private Thread trayThread;
     private bool isRunning = true;
-    public bool lastConnectionState = false;
-    private readonly CancellationTokenSource cts = new();
-    private float pingInterval = 2f;
     private float lastPingTime;
+    private float pingInterval = 2f;
+    public bool lastConnectionState = false;
+    [SerializeField] private VRBro vrBro;
+
+    private string CurrentAddress => Settings.Instance.ServerAddress;
+    private int CurrentPort => Settings.Instance.ServerPort;
+
+    private void Awake() {
+        mainThread = SynchronizationContext.Current;
+        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
+        InitializeTrayIcon();
+    }
 
     private async void Update() {
         if (trayIcon == null || vrBro == null || vrBro._net == null) return;
@@ -139,31 +37,33 @@ public class TrayManager : MonoBehaviour {
         }
     }
 
+    private void OnDestroy() {
+        isRunning = false;
+        cts.Cancel();
+        cts.Dispose();
+        trayIcon?.Dispose();
+        settingsForm?.Dispose();
+        trayThread?.Join(100);
+        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+    }
+
     public async Task UpdateConnectionState() {
         if (trayIcon == null || vrBro == null || vrBro._net == null) return;
         bool isConnected = await vrBro._net.CheckConnected();
         if (isConnected != lastConnectionState) {
             lastConnectionState = isConnected;
-            await Task.Run(() => {
-                if (trayIcon != null) trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Lost Connection";
-            });
+            trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Lost Connection";
         }
     }
 
-    private void Awake() {
-        mainThread = SynchronizationContext.Current;
-        vrBro = FindFirstObjectByType<VRBro>();
-        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
-        InitializeTrayIcon();
-    }
-
     private void OnSettingsChanged() {
-        if (vrBro != null && vrBro._net != null) {
+        if (vrBro?._net != null) {
             vrBro._net.serverAddr = Settings.Instance.ServerAddress;
             vrBro._net.serverPort = Settings.Instance.ServerPort;
         }
     }
 
+    #region Tray Icon Management
     private void InitializeTrayIcon() {
         if (!System.Windows.Forms.Application.MessageLoop) {
             trayThread = new Thread(() => {
@@ -180,16 +80,17 @@ public class TrayManager : MonoBehaviour {
 
     private void CreateTrayIcon() {
         trayMenu = new CustomContextMenuStrip();
-        
         var settingsItem = new ToolStripMenuItem("Settings");
-        settingsItem.Click += OnOpenSettings;
-        trayMenu.Items.Add(settingsItem);
-        
-        trayMenu.Items.Add(new ToolStripSeparator());
-        
         var quitItem = new ToolStripMenuItem("Quit");
+        
+        settingsItem.Click += OnOpenSettings;
         quitItem.Click += OnQuit;
-        trayMenu.Items.Add(quitItem);
+        
+        trayMenu.Items.AddRange(new ToolStripItem[] {
+            settingsItem,
+            new ToolStripSeparator(),
+            quitItem
+        });
 
         trayIcon = new NotifyIcon {
             Text = "VRBro - No Server",
@@ -197,8 +98,11 @@ public class TrayManager : MonoBehaviour {
             Visible = true
         };
 
-        trayIcon.DoubleClick += (s, e) => OnOpenSettings(s, e);
+        trayIcon.DoubleClick += OnOpenSettings;
+        LoadTrayIcon();
+    }
 
+    private void LoadTrayIcon() {
         string iconPath = Path.Combine(UnityEngine.Application.streamingAssetsPath, "Textures", "VRBro_logo-32x32.ico");
         try {
             trayIcon.Icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
@@ -207,154 +111,362 @@ public class TrayManager : MonoBehaviour {
             trayIcon.Icon = SystemIcons.Application;
         }
     }
+    #endregion
 
+    #region Settings Management
     private void OnOpenSettings(object sender, EventArgs e) {
-        if (settingsForm == null || settingsForm.IsDisposed)
-            settingsForm = new NetworkSettingsForm(vrBro, this);
-        
-        if (!settingsForm.Visible) settingsForm.Show();
-        else settingsForm.BringToFront();
+        try {
+            if (settingsForm == null || settingsForm.IsDisposed) {
+                settingsForm = new NetworkSettingsForm(CurrentAddress, CurrentPort, SaveSettings);
+            }
+            
+            if (!settingsForm.Visible) {
+                ExecuteOnMainThread(() => {
+                    settingsForm.UpdateCurrentValues(CurrentAddress, CurrentPort);
+                    settingsForm.Show();
+                });
+            } else {
+                settingsForm.BringToFront();
+            }
+        } catch (Exception ex) {
+            Debug.LogError($"Error opening settings: {ex}");
+        }
     }
 
-    private void OnQuit(object sender, EventArgs e) => ExecuteOnMainThread(() => {
-        isRunning = false;
-        cts.Cancel();
-        #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-        #else
-            UnityEngine.Application.Quit();
-        #endif
-    });
+    private async void SaveSettings(string address, int port) {
+        if (settingsForm == null || settingsForm.IsDisposed) return;
 
-    private void ExecuteOnMainThread(Action action) => mainThread?.Post(_ => action(), null);
-
-    private void OnDestroy() {
-        isRunning = false;
-        cts.Cancel();
-        cts.Dispose();
-        
-        if (trayIcon != null) {
-            trayIcon.Visible = false;
-            trayIcon.Dispose();
+        try {
+            bool verified = await VerifyConnection(address, port);
+            if (!settingsForm.IsDisposed) {
+                if (verified) {
+                    ExecuteOnMainThread(() => {
+                        Settings.Instance.ServerAddress = address;
+                        Settings.Instance.ServerPort = port;
+                    });
+                }
+                settingsForm.HandleConnectionUpdate(verified);
+            }
+        } catch (Exception ex) {
+            Debug.LogError($"Error in save settings: {ex.Message}");
+            if (!settingsForm.IsDisposed) {
+                settingsForm.HandleConnectionUpdate(false);
+            }
         }
-        
-        settingsForm?.Dispose();
-        trayThread?.Join(100);
-        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+    }
+
+    private async Task<bool> VerifyConnection(string address, int port) {
+        if (vrBro?._net == null) return false;
+
+        try {
+            string originalAddress = vrBro._net.serverAddr;
+            int originalPort = vrBro._net.serverPort;
+
+            vrBro._net.serverAddr = address;
+            vrBro._net.serverPort = port;
+            vrBro._net.Close();
+
+            await Task.Delay(500);
+
+            using var cts = new CancellationTokenSource();
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5), cts.Token);
+            var connectionTask = vrBro._net.CheckConnected();
+            
+            var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
+            cts.Cancel();
+
+            bool isConnected = false;
+            if (completedTask == connectionTask && !connectionTask.IsFaulted) {
+                isConnected = await connectionTask;
+            }
+
+            if (!isConnected) {
+                vrBro._net.serverAddr = originalAddress;
+                vrBro._net.serverPort = originalPort;
+                vrBro._net.Close();
+            }
+
+            return isConnected;
+        } catch (Exception ex) {
+            Debug.LogError($"Connection verification failed: {ex.Message}");
+            return false;
+        }
+    }
+    #endregion
+
+    #region Utility Methods
+    private void OnQuit(object sender, EventArgs e) {
+        ExecuteOnMainThread(() => {
+            isRunning = false;
+            cts.Cancel();
+            #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+            #else
+                Application.Quit();
+            #endif
+        });
+    }
+
+    private void ExecuteOnMainThread(Action action) {
+        mainThread?.Post(_ => action(), null);
+    }
+    #endregion
+}
+
+#region UI Components
+public class CustomContextMenuStrip : ContextMenuStrip {
+    private static readonly Color MenuBackColor = ColorTranslator.FromHtml("#181819");
+    private static readonly Color MenuForeColor = Color.White;
+    private static readonly Color ItemHoverColor = ColorTranslator.FromHtml("#2A3A75");
+    private static readonly Color ItemPressColor = ColorTranslator.FromHtml("#101010");
+    private static readonly Color SeparatorColor = ColorTranslator.FromHtml("#28282A");
+    private const int MenuItemPadding = 5;
+    private const int MenuCornerRadius = 4;
+    private static readonly System.Drawing.Font MenuItemFont = new("Segoe UI", 9F);
+
+    public CustomContextMenuStrip() {
+        InitializeMenuStyle();
+        Opening += OnMenuOpening;
+    }
+
+    private void InitializeMenuStyle() {
+        Renderer = new CustomContextMenuRenderer();
+        BackColor = MenuBackColor;
+        ForeColor = MenuForeColor;
+        ShowImageMargin = false;
+        Padding = new Padding(6);
+        Font = MenuItemFont;
+    }
+
+    private void OnMenuOpening(object sender, System.ComponentModel.CancelEventArgs e) {
+        foreach (ToolStripItem item in Items) {
+            if (item is ToolStripMenuItem menuItem) {
+                menuItem.BackColor = MenuBackColor;
+                menuItem.ForeColor = MenuForeColor;
+                menuItem.Padding = new Padding(MenuItemPadding, 2, MenuItemPadding, 4);
+                menuItem.Font = MenuItemFont;
+            }
+        }
+    }
+
+    protected override void Dispose(bool disposing) {
+        if (disposing) MenuItemFont?.Dispose();
+        base.Dispose(disposing);
+    }
+
+    private class CustomContextMenuRenderer : ToolStripProfessionalRenderer {
+        public CustomContextMenuRenderer() : base(new CustomColorTable()) { }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e) {
+            using var path = CreateRoundedRectanglePath(e.AffectedBounds.X, e.AffectedBounds.Y, 
+                e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1, MenuCornerRadius);
+            using var pen = new Pen(SeparatorColor);
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            e.Graphics.DrawPath(pen, path);
+        }
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e) {
+            if (e.Item is not ToolStripMenuItem menuItem) return;
+            
+            var g = e.Graphics;
+            var bounds = e.Item.ContentRectangle;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            using var brush = new SolidBrush(GetItemBackgroundColor(menuItem));
+            if (menuItem.Selected || menuItem.Pressed) {
+                using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, 
+                    bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
+                g.FillPath(brush, path);
+            } else {
+                g.FillRectangle(brush, bounds);
+            }
+        }
+
+        private Color GetItemBackgroundColor(ToolStripMenuItem menuItem) {
+            if (menuItem.Pressed) return ItemPressColor;
+            if (menuItem.Selected) return ItemHoverColor;
+            return MenuBackColor;
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e) {
+            var g = e.Graphics;
+            var bounds = e.Item.ContentRectangle;
+            var y = bounds.Height / 2;
+            using var pen = new Pen(SeparatorColor);
+            g.DrawLine(pen, bounds.Left + MenuItemPadding, y, bounds.Right - MenuItemPadding, y);
+        }
+
+        private static System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(
+            float x, float y, float width, float height, float radius) {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
+    private class CustomColorTable : ProfessionalColorTable {
+        public override Color MenuBorder => SeparatorColor;
+        public override Color MenuItemBorder => Color.Transparent;
+        public override Color MenuItemSelected => ItemHoverColor;
+        public override Color MenuItemSelectedGradientBegin => ItemHoverColor;
+        public override Color MenuItemSelectedGradientEnd => ItemHoverColor;
+        public override Color MenuItemPressedGradientBegin => ItemPressColor;
+        public override Color MenuItemPressedGradientEnd => ItemPressColor;
+        public override Color ToolStripDropDownBackground => MenuBackColor;
+        public override Color ImageMarginGradientBegin => MenuBackColor;
+        public override Color ImageMarginGradientMiddle => MenuBackColor;
+        public override Color ImageMarginGradientEnd => MenuBackColor;
     }
 }
 
 public class NetworkSettingsForm : Form {
-    private TextBox ipAddressBox;
-    private NumericUpDown portNumeric;
-    private RoundedButton saveButton;
-    private RoundedButton cancelButton;
-    private readonly VRBro vrBro;
-    private readonly TrayManager trayManager;
-    private readonly Settings settings;
-    private bool isConnecting;
+    private readonly TextBox ipAddressBox;
+    private readonly NumericUpDown portNumeric;
+    private readonly RoundedButton saveButton;
+    private readonly RoundedButton cancelButton;
+    private readonly Action<string, int> onSave;
     private readonly SemaphoreSlim connectionLock = new(1, 1);
+    private bool isConnecting;
+    private bool formClosing;
 
-    public NetworkSettingsForm(VRBro vrBro, TrayManager trayManager) {
-        this.vrBro = vrBro;
-        this.trayManager = trayManager;
-        InitializeComponent();
-        LoadCurrentSettings();
-        Settings.Instance.OnSettingsChanged += OnSettingsChanged;
+    public NetworkSettingsForm(string currentAddress, int currentPort, Action<string, int> onSave) {
+        this.onSave = onSave;
+        InitializeFormStyle();
+        
+        ipAddressBox = CreateIPAddressBox(currentAddress);
+        portNumeric = CreatePortNumeric(currentPort);
+        saveButton = CreateSaveButton();
+        cancelButton = CreateCancelButton();
+        
+        var ipLabel = CreateLabel("Server IP:", new Point(20, 20));
+        var portLabel = CreateLabel("Port:", new Point(20, 70));
+        
+        Controls.AddRange(new Control[] { 
+            ipLabel, ipAddressBox, 
+            portLabel, portNumeric,
+            saveButton, cancelButton 
+        });
     }
 
-    private void OnSettingsChanged() {
-        if (!isConnecting) {
-            ipAddressBox.Text = Settings.Instance.ServerAddress;
-            portNumeric.Value = Settings.Instance.ServerPort;
-        }
-    }
-
-    private void InitializeComponent() {
+    private void InitializeFormStyle() {
         BackColor = ColorTranslator.FromHtml("#181819");
-        ForeColor = System.Drawing.Color.White;
+        ForeColor = Color.White;
         Text = "VRBro Network Settings";
         Size = new Size(320, 200);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
+    }
 
-        Label ipLabel = new() {
-            Text = "Server IP:",
-            Location = new Point(20, 20),
-            AutoSize = true
-        };
-
-        ipAddressBox = new TextBox {
+    private TextBox CreateIPAddressBox(string currentAddress) {
+        var box = new TextBox {
             Location = new Point(20, 40),
             Size = new Size(260, 20),
+            Text = currentAddress,
             BackColor = ColorTranslator.FromHtml("#36393F"),
-            ForeColor = System.Drawing.Color.White,
+            ForeColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle
         };
-        ipAddressBox.KeyDown += (s, e) => {
+        box.KeyDown += (s, e) => {
             if (e.KeyCode == Keys.Enter) {
                 e.SuppressKeyPress = true;
                 if (!isConnecting) portNumeric.Focus();
             }
         };
+        return box;
+    }
 
-        Label portLabel = new() {
-            Text = "Port:",
-            Location = new Point(20, 70),
-            AutoSize = true
-        };
-
-        portNumeric = new NumericUpDown {
+    private NumericUpDown CreatePortNumeric(int currentPort) {
+        var numeric = new NumericUpDown {
             Location = new Point(20, 90),
             Size = new Size(260, 20),
             Minimum = 1,
             Maximum = 65535,
+            Value = currentPort,
             BackColor = ColorTranslator.FromHtml("#36393F"),
-            ForeColor = System.Drawing.Color.White
+            ForeColor = Color.White
         };
-        portNumeric.KeyDown += async (s, e) => {
+        numeric.KeyDown += async (s, e) => {
             if (e.KeyCode == Keys.Enter) {
                 e.SuppressKeyPress = true;
                 if (!isConnecting) await AttemptConnection();
             }
         };
-        portNumeric.Controls[0].BackColor = ColorTranslator.FromHtml("#36393F");
-        portNumeric.Controls[0].ForeColor = System.Drawing.Color.White;
+        numeric.Controls[0].BackColor = ColorTranslator.FromHtml("#36393F");
+        numeric.Controls[0].ForeColor = Color.White;
+        return numeric;
+    }
 
-        saveButton = new RoundedButton {
+    private Label CreateLabel(string text, Point location) {
+        return new Label {
+            Text = text,
+            Location = location,
+            AutoSize = true
+        };
+    }
+
+    private RoundedButton CreateSaveButton() {
+        var button = new RoundedButton {
             Text = "Save",
             Location = new Point(95, 120),
             Size = new Size(85, 30),
             BackColor = ColorTranslator.FromHtml("#162458"),
             HoverColor = ColorTranslator.FromHtml("#2A3A75"),
             PressColor = ColorTranslator.FromHtml("#101010"),
-            ForeColor = System.Drawing.Color.White,
+            ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat
         };
-        saveButton.Click += async (s, e) => await AttemptConnection();
+        button.Click += async (s, e) => await AttemptConnection();
+        return button;
+    }
 
-        cancelButton = new RoundedButton {
+    private RoundedButton CreateCancelButton() {
+        var button = new RoundedButton {
             Text = "Cancel",
             Location = new Point(195, 120),
             Size = new Size(85, 30),
             BackColor = ColorTranslator.FromHtml("#28282A"),
             HoverColor = ColorTranslator.FromHtml("#2A3A75"),
             PressColor = ColorTranslator.FromHtml("#101010"),
-            ForeColor = System.Drawing.Color.White,
+            ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat
         };
-        cancelButton.Click += (s, e) => Close();
-
-        Controls.AddRange(new Control[] { ipLabel, ipAddressBox, portLabel, portNumeric, saveButton, cancelButton });
+        button.Click += (s, e) => Close();
+        return button;
     }
 
-    private void LoadCurrentSettings() {
-        if (vrBro != null && vrBro._net != null) {
-            ipAddressBox.Text = Settings.Instance.ServerAddress;
-            portNumeric.Value = Settings.Instance.ServerPort;
+    public void UpdateCurrentValues(string address, int port) {
+        if (InvokeRequired) {
+            Invoke(new Action(() => UpdateCurrentValues(address, port)));
+            return;
         }
+        ipAddressBox.Text = address;
+        portNumeric.Value = port;
+    }
+
+    public void HandleConnectionUpdate(bool connected) {
+        if (formClosing) return;
+        
+        try {
+            if (InvokeRequired) {
+                Invoke(new Action(() => HandleConnectionUpdate(connected)));
+                return;
+            }
+
+            isConnecting = false;
+            EnableControls(true);
+            
+            if (connected) {
+                Hide();
+            } else {
+                ShowCustomError("Failed to connect to server. Please check your settings.");
+            }
+        } catch (ObjectDisposedException) { }
     }
 
     private async Task AttemptConnection() {
@@ -363,44 +475,20 @@ public class NetworkSettingsForm : Form {
             return;
         }
 
+        if (!System.Net.IPAddress.TryParse(ipAddressBox.Text, out _) && 
+            ipAddressBox.Text.ToLower() != "localhost") {
+            ShowCustomError("Please enter a valid IP address format.");
+            return;
+        }
+
         try {
             await connectionLock.WaitAsync();
             if (isConnecting) return;
+            
             isConnecting = true;
-
-            saveButton.Enabled = false;
-            cancelButton.Enabled = false;
-            ipAddressBox.Enabled = false;
-            portNumeric.Enabled = false;
-
-            if (vrBro != null && vrBro._net != null) {
-                string newAddress = ipAddressBox.Text;
-                int newPort = (int)portNumeric.Value;
-
-                vrBro._net.serverAddr = newAddress;
-                vrBro._net.serverPort = newPort;
-                vrBro._net.Close();
-
-                await Task.Delay(1000);
-                bool isConnected = await vrBro._net.CheckConnected();
-                
-                if (!isConnected) {
-                    ShowCustomError("Failed to connect to server. Please check your settings.");
-                    return;
-                }
-
-                Settings.Instance.ServerAddress = newAddress;
-                Settings.Instance.ServerPort = newPort;
-
-                if (trayManager != null) await trayManager.UpdateConnectionState();
-                Hide();
-            }
+            EnableControls(false);
+            onSave(ipAddressBox.Text, (int)portNumeric.Value);
         } finally {
-            saveButton.Enabled = true;
-            cancelButton.Enabled = true;
-            ipAddressBox.Enabled = true;
-            portNumeric.Enabled = true;
-            isConnecting = false;
             connectionLock.Release();
         }
     }
@@ -411,13 +499,13 @@ public class NetworkSettingsForm : Form {
             Size = new Size(300, 150),
             StartPosition = FormStartPosition.CenterParent,
             BackColor = ColorTranslator.FromHtml("#181819"),
-            ForeColor = System.Drawing.Color.White,
+            ForeColor = Color.White,
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
             MinimizeBox = false
         };
 
-        Label messageLabel = new() {
+        var messageLabel = new Label {
             Text = message,
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -425,18 +513,18 @@ public class NetworkSettingsForm : Form {
             Padding = new Padding(10)
         };
 
-        RoundedButton okButton = new() {
+        var okButton = new RoundedButton {
             Text = "OK",
             Size = new Size(80, 30),
             BackColor = ColorTranslator.FromHtml("#162458"),
             HoverColor = ColorTranslator.FromHtml("#2A3A75"),
             PressColor = ColorTranslator.FromHtml("#101010"),
-            ForeColor = System.Drawing.Color.White,
+            ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat
         };
         okButton.Click += (s, e) => customError.Close();
 
-        Panel buttonPanel = new() {
+        var buttonPanel = new Panel {
             Height = 50,
             Dock = DockStyle.Bottom,
             BackColor = ColorTranslator.FromHtml("#181819")
@@ -454,11 +542,23 @@ public class NetworkSettingsForm : Form {
         customError.ShowDialog(this);
     }
 
+    private void EnableControls(bool enabled) {
+        if (InvokeRequired) {
+            Invoke(new Action(() => EnableControls(enabled)));
+            return;
+        }
+        saveButton.Enabled = enabled;
+        cancelButton.Enabled = enabled;
+        ipAddressBox.Enabled = enabled;
+        portNumeric.Enabled = enabled;
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e) {
         if (e.CloseReason == CloseReason.UserClosing) {
             e.Cancel = true;
-            LoadCurrentSettings();
+            formClosing = true;
             Hide();
+            formClosing = false;
         }
         base.OnFormClosing(e);
     }
@@ -466,130 +566,98 @@ public class NetworkSettingsForm : Form {
     protected override void Dispose(bool disposing) {
         if (disposing) {
             connectionLock?.Dispose();
-            Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+            ipAddressBox?.Dispose();
+            portNumeric?.Dispose();
+            saveButton?.Dispose();
+            cancelButton?.Dispose();
         }
         base.Dispose(disposing);
     }
 }
 
-public class RoundedButton : Button
-{
+public class RoundedButton : Button {
     private const int Radius = 4;
-    private System.Drawing.Color normalColor;
-    private System.Drawing.Color hoverColor;
-    private System.Drawing.Color pressColor;
+    private Color normalColor;
+    private Color hoverColor;
+    private Color pressColor;
     private bool isHovering;
     private bool isPressed;
 
-    public RoundedButton()
-    {
+    public RoundedButton() {
+        InitializeStyle();
+        SetupEventHandlers();
+    }
+
+    private void InitializeStyle() {
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
-        FlatAppearance.MouseOverBackColor = System.Drawing.Color.Transparent;
-        FlatAppearance.MouseDownBackColor = System.Drawing.Color.Transparent;
-        Region = Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, Radius, Radius));
-        
-        MouseEnter += OnMouseEnterButton;
-        MouseLeave += OnMouseLeaveButton;
-        MouseDown += OnMouseDownButton;
-        MouseUp += OnMouseUpButton;
+        FlatAppearance.MouseOverBackColor = Color.Transparent;
+        FlatAppearance.MouseDownBackColor = Color.Transparent;
+        UpdateRegion();
     }
 
-    public System.Drawing.Color HoverColor
-    {
+    private void SetupEventHandlers() {
+        MouseEnter += (s, e) => { isHovering = true; UpdateButtonColor(); };
+        MouseLeave += (s, e) => { isHovering = false; isPressed = false; UpdateButtonColor(); };
+        MouseDown += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = true; UpdateButtonColor(); } };
+        MouseUp += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = false; UpdateButtonColor(); } };
+    }
+
+    public Color HoverColor {
         get => hoverColor;
-        set {
-            hoverColor = value;
-            UpdateButtonColor();
-        }
+        set { hoverColor = value; UpdateButtonColor(); }
     }
 
-    public System.Drawing.Color PressColor
-    {
+    public Color PressColor {
         get => pressColor;
-        set {
-            pressColor = value;
-            UpdateButtonColor();
-        }
+        set { pressColor = value; UpdateButtonColor(); }
     }
 
-    public new System.Drawing.Color BackColor
-    {
+    public new Color BackColor {
         get => base.BackColor;
-        set {
-            normalColor = value;
-            UpdateButtonColor();
-        }
+        set { normalColor = value; UpdateButtonColor(); }
     }
     
-    private void UpdateButtonColor()
-    {
-        if (isPressed && !pressColor.IsEmpty)
-            base.BackColor = pressColor;
-        else if (isHovering && !hoverColor.IsEmpty)
-            base.BackColor = hoverColor;
-        else
-            base.BackColor = normalColor;
-    }
-    
-    private void OnMouseEnterButton(object sender, EventArgs e)
-    {
-        isHovering = true;
-        UpdateButtonColor();
+    private void UpdateButtonColor() {
+        base.BackColor = isPressed && !pressColor.IsEmpty ? pressColor :
+                        isHovering && !hoverColor.IsEmpty ? hoverColor :
+                        normalColor;
     }
 
-    private void OnMouseLeaveButton(object sender, EventArgs e)
-    {
-        isHovering = false;
-        isPressed = false;
-        UpdateButtonColor();
-    }
-
-    private void OnMouseDownButton(object sender, MouseEventArgs e)
-    {
-        if (e.Button == MouseButtons.Left)
-        {
-            isPressed = true;
-            UpdateButtonColor();
-        }
-    }
-
-    private void OnMouseUpButton(object sender, MouseEventArgs e)
-    {
-        if (e.Button == MouseButtons.Left)
-        {
-            isPressed = false;
-            UpdateButtonColor();
-        }
-    }
-
-    protected override void OnSizeChanged(EventArgs e)
-    {
+    protected override void OnSizeChanged(EventArgs e) {
         base.OnSizeChanged(e);
+        UpdateRegion();
+    }
+
+    private void UpdateRegion() {
         Region = Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, Radius, Radius));
     }
 
     [System.Runtime.InteropServices.DllImport("Gdi32.dll")]
-    private static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, 
-        int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
+    private static extern IntPtr CreateRoundRectRgn(
+        int nLeftRect, int nTopRect, 
+        int nRightRect, int nBottomRect, 
+        int nWidthEllipse, int nHeightEllipse
+    );
 }
 
-public static class GraphicsExtensions
-{
-    public static void DrawRoundedRectangle(this System.Drawing.Graphics graphics, Pen pen, float x, float y, float width, float height, float radius)
-    {
+public static class GraphicsExtensions {
+    public static void DrawRoundedRectangle(
+        this System.Drawing.Graphics graphics, 
+        Pen pen, 
+        float x, 
+        float y, 
+        float width, 
+        float height, 
+        float radius
+    ) {
         using var path = new System.Drawing.Drawing2D.GraphicsPath();
-        
-        // Top left arc
         path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
-        // Top right arc
         path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
-        // Bottom right arc
         path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
-        // Bottom left arc
         path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
         path.CloseFigure();
-
         graphics.DrawPath(pen, path);
     }
 }
+#endregion

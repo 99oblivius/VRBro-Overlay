@@ -1,14 +1,14 @@
-// File: Network.cs
 using System;
 using UnityEngine;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Threading;
 
 
 public class Network
 {
+    private readonly SemaphoreSlim _networkLock = new(1, 1);
+    
     public string serverAddr = "127.0.0.1";
     public int serverPort = 33390;
     private Client _client;
@@ -21,11 +21,16 @@ public class Network
     public void Close() {
         _client?.Close();
         _client = null;
+        _networkLock?.Dispose();
     }
 
     public async Task<bool> CheckConnected() {
-        await SendPacket(ActionTypeRequest.Ping);
-        return _client != null && _client.IsConnected();
+        try {
+            var result = await SendPacket(ActionTypeRequest.Ping);
+            return result >= 0;
+        } catch {
+            return false;
+        }
     }
 
     private async Task<int> SendPacket<T>(T action) where T : Enum {
@@ -36,11 +41,9 @@ public class Network
 
         if (action is ActionTypeRequest request) {
             return await HandleAction(request);
-        }
-        else if (action is ActionTypeEvent eventAction) {
+        } else if (action is ActionTypeEvent eventAction) {
             return await HandleAction(eventAction);
-        }
-        else {
+        } else {
             throw new ArgumentException("Unsupported ActionType");
         }
     }
@@ -68,56 +71,26 @@ public class Network
     private async Task<int> SendMessage(List<byte> packet) {
         if (!_client.IsConnected()) return -1;
 
-        await _client.SendMessage(packet);
-        byte[] response = await _client.ReceiveResponseAsync();
-        if (response == null || response.Length == 0) return -1;
-
-        StringBuilder sb = new(response.ToList().Count * 8);
-        foreach (byte b in packet) { sb.Append(Convert.ToString(b, 2).PadLeft(8, '0')); }
-        return (response[0] & (1 << 6)) != 0 ? 1 : 0;
+        try {
+            await _networkLock.WaitAsync();
+            byte[] response = await _client.SendMessageWithResponse(packet);
+            if (response == null || response.Length == 0) return -1;
+            return (response[0] & (1 << 6)) != 0 ? 1 : 0;
+        }
+        finally {
+            _networkLock.Release();
+        }
     }
 
-    public async Task<int> SaveReplayBuffer() {
-        return await SendPacket(ActionTypeEvent.SaveReplayBuffer);
-    }
-
-    public async Task<int> StartReplayBuffer() {
-        return await SendPacket(ActionTypeEvent.StartReplayBuffer);
-    }
-
-    public async Task<int> StopReplayBuffer() {
-        return await SendPacket(ActionTypeEvent.StopReplayBuffer);
-    }
-
-    public async Task<int> IsReplayBufferActive() {
-        return await SendPacket(ActionTypeRequest.ReplayBufferActive);
-    }
-
-    public async Task<int> StartRecording() {
-        return await SendPacket(ActionTypeEvent.StartRecording);
-    }
-
-    public async Task<int> StopRecording() {
-        return await SendPacket(ActionTypeEvent.StopRecording);
-    }
-
-    public async Task<int> StartStreaming() {
-        return await SendPacket(ActionTypeEvent.StartStreaming);
-    }
-
-    public async Task<int> StopStreaming() {
-        return await SendPacket(ActionTypeEvent.StopStreaming);
-    }
-
-    public async Task<int> SplitRecording() {
-        return await SendPacket(ActionTypeEvent.RecordingSplitFile);
-    }
-
-    public async Task<int> IsRecordingActive() {
-        return await SendPacket(ActionTypeRequest.RecordingActive);
-    }
-
-    public async Task<int> IsStreamingActive() {
-        return await SendPacket(ActionTypeRequest.StreamingActive);
-    }
+    public async Task<int> SaveBuffer()            => await SendPacket(ActionTypeEvent.SaveReplayBuffer);
+    public async Task<int> StartReplayBuffer()     => await SendPacket(ActionTypeEvent.StartReplayBuffer);
+    public async Task<int> StopReplayBuffer()      => await SendPacket(ActionTypeEvent.StopReplayBuffer);
+    public async Task<int> IsReplayBufferActive()  => await SendPacket(ActionTypeRequest.ReplayBufferActive);
+    public async Task<int> StartRecording()        => await SendPacket(ActionTypeEvent.StartRecording);
+    public async Task<int> StopRecording()         => await SendPacket(ActionTypeEvent.StopRecording);
+    public async Task<int> StartStreaming()        => await SendPacket(ActionTypeEvent.StartStreaming);
+    public async Task<int> StopStreaming()         => await SendPacket(ActionTypeEvent.StopStreaming);
+    public async Task<int> SplitRecording()        => await SendPacket(ActionTypeEvent.RecordingSplitFile);
+    public async Task<int> IsRecordingActive()     => await SendPacket(ActionTypeRequest.RecordingActive);
+    public async Task<int> IsStreamingActive()     => await SendPacket(ActionTypeRequest.StreamingActive);
 }

@@ -45,7 +45,7 @@ namespace OVRUtil
         }
 
         public static void Destroy(ulong handle) {
-            if (handle != OpenVR.k_ulOverlayHandleInvalid) {
+            if (handle != OpenVR.k_ulOverlayHandleInvalid && OpenVR.Overlay != null) {
                 var error = OpenVR.Overlay.DestroyOverlay(handle);
                 if (error != EVROverlayError.None) {
                     throw new Exception("Failed to destroy Overlay: " + error);

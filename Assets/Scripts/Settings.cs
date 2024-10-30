@@ -21,9 +21,7 @@ public class Settings {
     private static Settings instance;
     public static Settings Instance {
         get {
-            if (instance == null) {
-                instance = Load();
-            }
+            instance ??= Load();
             return instance;
         }
     }

@@ -20,7 +20,6 @@ public class VRBroDash : MonoBehaviour
     public Button button4;
     public Button button5;
     public Button button6;
-    public Button button7;
 
     private ulong dashboardHandle = OpenVR.k_ulOverlayHandleInvalid;
     private ulong thumbnailHandle = OpenVR.k_ulOverlayHandleInvalid;
@@ -60,7 +59,7 @@ public class VRBroDash : MonoBehaviour
         while (OpenVR.Overlay.PollNextOverlayEvent(dashboardHandle, ref vrEvent, uncbVREvent)) {
             switch (vrEvent.eventType) {
             case (uint)EVREventType.VREvent_MouseMove:
-                Button[] buttons = {button1, button2, button3, button4, button5, button6, button7};
+                Button[] buttons = {button1, button2, button3, button4, button5, button6};
                 foreach (var b in buttons) {
                     b.gameObject.GetComponent<Image>().color = new Color32(61, 68, 80, 255);
                 }

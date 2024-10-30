@@ -1,5 +1,5 @@
 {
-  "app_key": "application.generated.unity.vrobsremote.exe",
+  "app_key": "application.generated.unity.vrbrooverlay.exe",
   "bindings": {
     "/actions/buggy": {
       "chords": [],
@@ -44,17 +44,17 @@
           },
           "inputs": {
             "long": {
-              "output": "/actions/vrbro/in/savebuffer"
+              "output": "/actions/vrbro/in/SaveBuffer"
             }
           }
         }
       ]
     }
   },
-  "category" : "steamvr_input",
+  "category": "steamvr_input",
   "controller_type": "knuckles",
-  "description": "Hold A for 3 seconds to save the OBS replay buffer.",
+  "description": "Hold A for 3 seconds to save the OBS replay buffer. Additional actions available for custom binding.",
   "name": "VRBro knuckles_default",
-  "options" : {},
-  "simulated_actions" : []
+  "options": {},
+  "simulated_actions": []
 }

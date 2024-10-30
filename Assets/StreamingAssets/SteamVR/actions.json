@@ -6,6 +6,41 @@
       "requirement": "suggested"
     },
     {
+      "name": "/actions/vrbro/in/StartBuffer",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/StopBuffer",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/StartRecording",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/StopRecording",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/StartStreaming",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/StopStreaming",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
+      "name": "/actions/vrbro/in/SplitRecording",
+      "type": "boolean",
+      "requirement": "optional"
+    },
+    {
       "name": "/actions/vrbro/out/Haptic",
       "type": "vibration"
     }
@@ -25,7 +60,14 @@
   "localization": [
     {
       "language_tag": "en_US",
-      "/actions/vrbro/in/SaveBuffer": "Save Replay Buffer"
+      "/actions/vrbro/in/SaveBuffer": "Save Replay Buffer",
+      "/actions/vrbro/in/StartBuffer": "Start Replay Buffer",
+      "/actions/vrbro/in/StopBuffer": "Stop Replay Buffer",
+      "/actions/vrbro/in/StartRecording": "Start Recording",
+      "/actions/vrbro/in/StopRecording": "Stop Recording",
+      "/actions/vrbro/in/StartStreaming": "Start Streaming",
+      "/actions/vrbro/in/StopStreaming": "Stop Streaming",
+      "/actions/vrbro/in/SplitRecording": "Split Recording File"
     }
   ]
 }
