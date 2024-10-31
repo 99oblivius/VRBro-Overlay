@@ -129,26 +129,19 @@ public class TrayManager : MonoBehaviour {
 
             vrBro._net.serverAddr = address;
             vrBro._net.serverPort = port;
-            await Task.Delay(0);
-
-            Debug.Log($"_net: {vrBro._net}");
+            vrBro._net.Close();
 
             var isConnected = await vrBro._net.CheckConnected();
 
-            Debug.Log($"isConnected: {isConnected}");
-
             if (!isConnected) {
-                Debug.LogWarning("Connection attempt failed");
                 vrBro._net.serverAddr = originalAddress;
                 vrBro._net.serverPort = originalPort;
                 vrBro._net.Close();
             }
             
-            Debug.Log("Is Connected!");
             return isConnected;
 
-        } catch (Exception ex) {
-            Debug.LogError($"Attempt Connection Failed: {ex.Message}");
+        } catch {
             return false;
         }
     }
@@ -413,15 +406,9 @@ public class NetworkSettingsForm : Form {
             EnableControls(false);
             saveButton.Text = "Connecting...";
 
-            Debug.Log(" - Attemping New Connection");
             var result = await onConnectionAttempt(ipAddressBox.Text, (int)portNumeric.Value);
-            Debug.Log(" + Passed Attemping New Connection");
 
-            if (result) {
-                Hide();
-            } else {
-                ShowCustomError("Failed to connect to server.\nPlease check your settings.");
-            }
+            if (result) Hide();
         } finally {
             isConnecting = false;
             EnableControls(true);

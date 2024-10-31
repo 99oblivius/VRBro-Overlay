@@ -36,12 +36,9 @@ public class Network : IDisposable
 
     public async Task<bool> CheckConnected() {
         try {
-            Debug.Log("Sending Ping Request");
             var result = await SendRequest(ActionTypeRequest.Ping);
-            Debug.Log($"Ping result is: {result}");
             return result >= 0;
-        } catch (Exception e) {
-            Debug.Log($"Ping result went badly: {e}");
+        } catch {
             return false;
         }
     }

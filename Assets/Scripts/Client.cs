@@ -90,8 +90,7 @@ public class Client
             _requestLock?.Dispose();
             _stream?.Close();
             _client?.Close();
-        }
-        catch (Exception) {}
+        } catch (Exception) {}
     }
 
     ~Client() {
