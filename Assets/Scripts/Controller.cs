@@ -60,8 +60,6 @@ public class Controller : MonoBehaviour {
                     UpdateStateIfChanged(StreamOperation.Buffer, bufferResult == 1);
                     UpdateStateIfChanged(StreamOperation.Recording, recordingResult == 1);
                     UpdateStateIfChanged(StreamOperation.Streaming, streamingResult == 1);
-                } else {
-                    Debug.Log("UpdateState got cut off!");
                 }
             }
         } catch (Exception) {

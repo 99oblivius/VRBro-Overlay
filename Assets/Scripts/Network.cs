@@ -5,33 +5,26 @@ using System.Collections.Generic;
 using System.Threading;
 
 
-public class Network : IDisposable
+public class Network
 {
-    public readonly SemaphoreSlim _networkLock = new(1, 1);
+    public SemaphoreSlim _networkLock = new(1, 1);
     private Client _client;
-    private bool _disposed;
 
     public string serverAddr = "127.0.0.1";
     public int serverPort = 33390;
 
     #region Connection Management
+
     private async Task Connect(string address, int port) {
         _client = new Client(address, port);
         await _client.ConnectAsync();
     }
 
     public void Close() {
-        _client?.Close();
-        _client = null;
-    }
-
-    public void Dispose() {
-        if (_disposed) return;
-        
-        _disposed = true;
-        _client?.Close();
-        _client = null;
         _networkLock?.Dispose();
+        _networkLock = new(1, 1);
+        _client?.Close();
+        _client = null;
     }
 
     public async Task<bool> CheckConnected() {
@@ -56,8 +49,9 @@ public class Network : IDisposable
     }
 
     private async Task<int> SendPacketWithConnection(List<byte> packet) {
-        if (_client == null || !_client.IsConnected())
+        if (_client == null || !_client.IsConnected()) {
             await Connect(serverAddr, serverPort);
+        }
         if (!_client.IsConnected())
             return -1;
 

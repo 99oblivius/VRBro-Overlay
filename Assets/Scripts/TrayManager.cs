@@ -140,7 +140,6 @@ public class TrayManager : MonoBehaviour {
             }
             
             return isConnected;
-
         } catch {
             return false;
         }
@@ -408,7 +407,11 @@ public class NetworkSettingsForm : Form {
 
             var result = await onConnectionAttempt(ipAddressBox.Text, (int)portNumeric.Value);
 
-            if (result) Hide();
+            if (result) {
+                Hide();
+            } else {
+                ShowCustomError("Failed connection to server.\nCheck your network settings.");
+            }
         } finally {
             isConnecting = false;
             EnableControls(true);
