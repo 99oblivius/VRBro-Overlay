@@ -1,4 +1,4 @@
-public class StreamingStateManager {
+public class StateManager {
     private readonly System.Collections.Generic.HashSet<string> pendingOperations = new();
     
     public bool BufferActive { get; private set; }

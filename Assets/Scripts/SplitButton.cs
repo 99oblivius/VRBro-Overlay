@@ -4,7 +4,7 @@ using TMPro;
 using System.Threading.Tasks;
 
 public class SplitButton : MonoBehaviour {
-    [SerializeField] private StreamingController streamingController;
+    [SerializeField] private Controller streamingController;
     [SerializeField] private CanvasGroup canvasGroup;
     [SerializeField] private TextMeshProUGUI text;
     [SerializeField] private float offsetX = 50f;

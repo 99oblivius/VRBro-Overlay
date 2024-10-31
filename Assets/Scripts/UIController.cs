@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class StreamingUIController : MonoBehaviour {
-    [SerializeField] private StreamingController streamingController;
+public class UIController : MonoBehaviour {
+    [SerializeField] private Controller streamingController;
     [SerializeField] private Image bufferIndicator;
     [SerializeField] private Image recordingIndicator;
     [SerializeField] private Image streamingIndicator;

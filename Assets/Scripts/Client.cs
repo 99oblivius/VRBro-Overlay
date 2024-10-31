@@ -76,12 +76,10 @@ public class Client
 
                 return response.ToArray();
             }, cts.Token);
-        }
-        catch (OperationCanceledException) {
+        } catch (OperationCanceledException) {
             Debug.LogWarning("Network request timed out");
             return null;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Debug.LogError($"Error receiving response: {ex.Message}");
             return null;
         }

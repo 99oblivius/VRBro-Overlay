@@ -84,7 +84,7 @@ Material:
     - _UScale: 1
     - _UVSec: 0
     - _VScale: 1
-    - _WaveAmplitude: 0
+    - _WaveAmplitude: 0.5
     - _WaveFrequency: 0.00011
     - _WaveSpeed: 10
     - _ZWrite: 1

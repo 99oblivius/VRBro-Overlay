@@ -9,10 +9,10 @@ public enum StreamOperation {
     Streaming
 }
 
-public class StreamingController : MonoBehaviour {
+public class Controller : MonoBehaviour {
     [SerializeField] private VRBro vrBro;
     
-    public StreamingStateManager stateManager = new();
+    public StateManager stateManager = new();
     private float pollInterval = 0.75f;
     private float lastPollTime;
     private readonly SemaphoreSlim operationLock = new(1, 1);
@@ -35,6 +35,42 @@ public class StreamingController : MonoBehaviour {
         if (Time.time - lastPollTime >= pollInterval) {
             lastPollTime = Time.time;
             await PollStates();
+        }
+    }
+
+    private async Task PollStates() {
+        try {
+            isPolling = true;
+            
+            // Check connection first
+            bool wasConnected = isConnected;
+            var bufferResult = await vrBro._net.IsReplayBufferActive();
+            isConnected = bufferResult >= 0;
+
+            if (wasConnected != isConnected) {
+                OnConnectionStateChanged?.Invoke(isConnected);
+            }
+
+            // Only continue polling states if connected
+            if (isConnected) {
+                var recordingResult = await vrBro._net.IsRecordingActive();
+                var streamingResult = await vrBro._net.IsStreamingActive();
+                
+                if (!stateManager.IsAnyOperationPending()) {
+                    UpdateStateIfChanged(StreamOperation.Buffer, bufferResult == 1);
+                    UpdateStateIfChanged(StreamOperation.Recording, recordingResult == 1);
+                    UpdateStateIfChanged(StreamOperation.Streaming, streamingResult == 1);
+                } else {
+                    Debug.Log("UpdateState got cut off!");
+                }
+            }
+        } catch (Exception) {
+            if (isConnected) {
+                isConnected = false;
+                OnConnectionStateChanged?.Invoke(false);
+            }
+        } finally {
+            isPolling = false;
         }
     }
     
@@ -129,42 +165,6 @@ public class StreamingController : MonoBehaviour {
             stateManager.SetOperationPending(StreamOperation.Recording.ToString(), false);
             OnPendingStateChanged?.Invoke(StreamOperation.Recording, false);
             operationLock.Release();
-        }
-    }
-
-    private async Task PollStates() {
-        if (vrBro._net == null || isPolling) return;
-        
-        try {
-            isPolling = true;
-            
-            // Check connection first
-            bool wasConnected = isConnected;
-            var bufferResult = await vrBro._net.IsReplayBufferActive();
-            isConnected = bufferResult >= 0;
-
-            if (wasConnected != isConnected) {
-                OnConnectionStateChanged?.Invoke(isConnected);
-            }
-
-            // Only continue polling states if connected
-            if (isConnected) {
-                var recordingResult = await vrBro._net.IsRecordingActive();
-                var streamingResult = await vrBro._net.IsStreamingActive();
-                
-                if (!stateManager.IsAnyOperationPending()) {
-                    UpdateStateIfChanged(StreamOperation.Buffer, bufferResult == 1);
-                    UpdateStateIfChanged(StreamOperation.Recording, recordingResult == 1);
-                    UpdateStateIfChanged(StreamOperation.Streaming, streamingResult == 1);
-                }
-            }
-        } catch (Exception) {
-            if (isConnected) {
-                isConnected = false;
-                OnConnectionStateChanged?.Invoke(false);
-            }
-        } finally {
-            isPolling = false;
         }
     }
     

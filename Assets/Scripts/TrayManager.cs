@@ -9,7 +9,7 @@ using Color = System.Drawing.Color;
 
 public class TrayManager : MonoBehaviour {
     [SerializeField] private VRBro vrBro;
-    [SerializeField] private StreamingController streamingController;
+    [SerializeField] private Controller streamingController;
 
     private readonly CancellationTokenSource cts = new();
     private NotifyIcon trayIcon;
@@ -103,7 +103,7 @@ public class TrayManager : MonoBehaviour {
     private void OnOpenSettings(object sender, EventArgs e) {
         try {
             if (settingsForm == null || settingsForm.IsDisposed) {
-                settingsForm = new NetworkSettingsForm(CurrentAddress, CurrentPort, AttemptConnection);
+                settingsForm = new NetworkSettingsForm(CurrentAddress, CurrentPort, OnSaveConnection);
             }
             
             if (!settingsForm.Visible) {
@@ -119,7 +119,7 @@ public class TrayManager : MonoBehaviour {
         }
     }
 
-    private async Task<bool> AttemptConnection(string address, int port) {
+    private async Task<bool> OnSaveConnection(string address, int port) {
         if (vrBro?._net == null) return false;
 
         try {
@@ -129,9 +129,13 @@ public class TrayManager : MonoBehaviour {
 
             vrBro._net.serverAddr = address;
             vrBro._net.serverPort = port;
-            vrBro._net.Close();
+            await Task.Delay(0);
+
+            Debug.Log($"_net: {vrBro._net}");
 
             var isConnected = await vrBro._net.CheckConnected();
+
+            Debug.Log($"isConnected: {isConnected}");
 
             if (!isConnected) {
                 Debug.LogWarning("Connection attempt failed");
@@ -140,6 +144,7 @@ public class TrayManager : MonoBehaviour {
                 vrBro._net.Close();
             }
             
+            Debug.Log("Is Connected!");
             return isConnected;
 
         } catch (Exception ex) {
@@ -400,17 +405,7 @@ public class NetworkSettingsForm : Form {
     }
 
     private async Task AttemptConnection() {
-        if (string.IsNullOrWhiteSpace(ipAddressBox.Text)) {
-            ShowCustomError("Please enter a valid IP address.");
-            return;
-        }
-
-        if (!System.Net.IPAddress.TryParse(ipAddressBox.Text, out _) && 
-            ipAddressBox.Text.ToLower() != "localhost") {
-            ShowCustomError("Please enter a valid IP address format.");
-            return;
-        }
-
+        if (!ValidateInput()) return;
         if (isConnecting) return;
         
         try {
@@ -418,14 +413,35 @@ public class NetworkSettingsForm : Form {
             EnableControls(false);
             saveButton.Text = "Connecting...";
 
-            if (await onConnectionAttempt(ipAddressBox.Text, (int)portNumeric.Value)) Hide();
-            else ShowCustomError("Failed to connect to server. \nPlease check your settings.");
-        }
-        finally {
+            Debug.Log(" - Attemping New Connection");
+            var result = await onConnectionAttempt(ipAddressBox.Text, (int)portNumeric.Value);
+            Debug.Log(" + Passed Attemping New Connection");
+
+            if (result) {
+                Hide();
+            } else {
+                ShowCustomError("Failed to connect to server.\nPlease check your settings.");
+            }
+        } finally {
             isConnecting = false;
             EnableControls(true);
             saveButton.Text = "Save";
         }
+    }
+
+    private bool ValidateInput() {
+        if (string.IsNullOrWhiteSpace(ipAddressBox.Text)) {
+            ShowCustomError("Please enter a valid IP address.");
+            return false;
+        }
+
+        if (!System.Net.IPAddress.TryParse(ipAddressBox.Text, out _) && 
+            ipAddressBox.Text.ToLower() != "localhost") {
+            ShowCustomError("Please enter a valid IP address format.");
+            return false;
+        }
+
+        return true;
     }
 
     private void ShowCustomError(string message) {

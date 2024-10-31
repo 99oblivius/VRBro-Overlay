@@ -2938,7 +2938,7 @@ GameObject:
   - component: {fileID: 1728461664}
   - component: {fileID: 1728461663}
   m_Layer: 0
-  m_Name: StreamingController
+  m_Name: Controller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3269,7 +3269,7 @@ GameObject:
   - component: {fileID: 1933482196}
   - component: {fileID: 1933482195}
   m_Layer: 0
-  m_Name: StreamingUIController
+  m_Name: UIController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
