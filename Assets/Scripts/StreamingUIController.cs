@@ -16,6 +16,7 @@ public class StreamingUIController : MonoBehaviour {
     private void Awake() {
         bindingsEnabled = Settings.Instance.BindingsEnabled;
         streamingController.OnStateChanged += HandleStateChanged;
+        streamingController.OnPendingStateChanged += HandlePendingStateChanged;
         
         // Initialize UI states
         UpdateIndicatorState(StreamOperation.Buffer, streamingController.stateManager.BufferActive);
@@ -24,26 +25,39 @@ public class StreamingUIController : MonoBehaviour {
     }
 
     private void OnDestroy() {
-        streamingController.OnStateChanged -= HandleStateChanged;
+        if (streamingController != null) {
+            streamingController.OnStateChanged -= HandleStateChanged;
+            streamingController.OnPendingStateChanged -= HandlePendingStateChanged;
+        }
     }
     
     private void HandleStateChanged(StreamOperation operation, bool active) {
         UpdateIndicatorState(operation, active);
     }
 
+    private void HandlePendingStateChanged(StreamOperation operation, bool isPending) {
+        Image indicator = GetIndicatorForOperation(operation);
+        if (indicator == null) return;
+
+        if (isPending) {
+            indicator.color = PendingColor;
+        } else {
+            UpdateIndicatorState(operation, GetOperationState(operation));
+        }
+    }
+
     private void UpdateIndicatorState(StreamOperation operation, bool active) {
         Image indicator = GetIndicatorForOperation(operation);
         if (indicator == null) return;
 
+        // Don't update if operation is pending
         if (streamingController.stateManager.IsOperationPending(operation.ToString())) {
-            // Don't update while operation is pending
             return;
         }
 
         if (operation == StreamOperation.Buffer) {
             indicator.material.SetFloat("_WaveAmplitude", active ? 0.5f : 0f);
-        }
-        else {
+        } else {
             indicator.color = active ? ActiveColor : InactiveColor;
         }
     }
@@ -55,19 +69,6 @@ public class StreamingUIController : MonoBehaviour {
             StreamOperation.Streaming => streamingIndicator,
             _ => null
         };
-    }
-
-    private void UpdatePendingState(StreamOperation operation, bool isPending) {
-        Image indicator = GetIndicatorForOperation(operation);
-        if (indicator == null) return;
-
-        if (isPending && operation != StreamOperation.Buffer) {
-            indicator.color = PendingColor;
-        }
-        else {
-            // Restore proper state after pending
-            UpdateIndicatorState(operation, GetOperationState(operation));
-        }
     }
 
     private bool GetOperationState(StreamOperation operation) {
@@ -82,84 +83,65 @@ public class StreamingUIController : MonoBehaviour {
     // Input binding methods
     public async void StartBuffer() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Buffer, true);
         await streamingController.ToggleOperation(StreamOperation.Buffer, true);
-        UpdatePendingState(StreamOperation.Buffer, false);
     }
 
     public async void StopBuffer() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Buffer, true);
         await streamingController.ToggleOperation(StreamOperation.Buffer, false);
-        UpdatePendingState(StreamOperation.Buffer, false);
     }
 
     public async void StartRecording() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Recording, true);
         await streamingController.ToggleOperation(StreamOperation.Recording, true);
-        UpdatePendingState(StreamOperation.Recording, false);
     }
 
     public async void StopRecording() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Recording, true);
         await streamingController.ToggleOperation(StreamOperation.Recording, false);
-        UpdatePendingState(StreamOperation.Recording, false);
     }
 
     public async void StartStreaming() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Streaming, true);
         await streamingController.ToggleOperation(StreamOperation.Streaming, true);
-        UpdatePendingState(StreamOperation.Streaming, false);
     }
 
     public async void StopStreaming() {
         if (!bindingsEnabled) return;
-        UpdatePendingState(StreamOperation.Streaming, true);
         await streamingController.ToggleOperation(StreamOperation.Streaming, false);
-        UpdatePendingState(StreamOperation.Streaming, false);
     }
 
     public async void SaveBuffer() {
-        if (!bindingsEnabled || !streamingController.stateManager.BufferActive)
-            return;
+        if (!bindingsEnabled) return;
         await streamingController.SaveBuffer();
     }
 
     public async void SplitRecording() {
-        if (!bindingsEnabled || !streamingController.stateManager.RecordingActive)
-            return;
+        if (!bindingsEnabled) return;
         await streamingController.SplitRecording();
     }
 
-
-    // Button binding methods
+    // Button click methods
     public async void OnBufferButtonClick() {
+        if (!bindingsEnabled) return;
         bool isActive = streamingController.stateManager.BufferActive;
-        UpdatePendingState(StreamOperation.Buffer, true);
         await streamingController.ToggleOperation(StreamOperation.Buffer, !isActive);
-        UpdatePendingState(StreamOperation.Buffer, false);
     }
 
     public async void OnRecordingButtonClick() {
+        if (!bindingsEnabled) return;
         bool isActive = streamingController.stateManager.RecordingActive;
-        UpdatePendingState(StreamOperation.Recording, true);
         await streamingController.ToggleOperation(StreamOperation.Recording, !isActive);
-        UpdatePendingState(StreamOperation.Recording, false);
     }
     
     public async void OnStreamingButtonClick() {
+        if (!bindingsEnabled) return;
         bool isActive = streamingController.stateManager.StreamingActive;
-        UpdatePendingState(StreamOperation.Streaming, true);
         await streamingController.ToggleOperation(StreamOperation.Streaming, !isActive);
-        UpdatePendingState(StreamOperation.Streaming, false);
     }
 
     public async void OnSplitButtonClick() {
-        if (!streamingController.stateManager.RecordingActive)
-            return;
+        if (!bindingsEnabled) return;
         await streamingController.SplitRecording();
     }
 }

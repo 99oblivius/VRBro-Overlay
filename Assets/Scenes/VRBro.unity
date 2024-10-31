@@ -2470,7 +2470,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   vrBro: {fileID: 1693267238}
   streamingController: {fileID: 1728461663}
-  lastConnectionState: 0
 --- !u!1 &1598672892
 GameObject:
   m_ObjectHideFlags: 0

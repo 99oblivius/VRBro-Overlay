@@ -8,6 +8,9 @@ using UnityEngine;
 using Color = System.Drawing.Color;
 
 public class TrayManager : MonoBehaviour {
+    [SerializeField] private VRBro vrBro;
+    [SerializeField] private StreamingController streamingController;
+
     private readonly CancellationTokenSource cts = new();
     private NotifyIcon trayIcon;
     private CustomContextMenuStrip trayMenu;
@@ -15,10 +18,6 @@ public class TrayManager : MonoBehaviour {
     private SynchronizationContext mainThread;
     private Thread trayThread;
     private bool isRunning = true;
-    private float lastPingTime;
-    private float pingInterval = 2f;
-    public bool lastConnectionState = false;
-    [SerializeField] private VRBro vrBro;
 
     private string CurrentAddress => Settings.Instance.ServerAddress;
     private int CurrentPort => Settings.Instance.ServerPort;
@@ -26,15 +25,8 @@ public class TrayManager : MonoBehaviour {
     private void Awake() {
         mainThread = SynchronizationContext.Current;
         Settings.Instance.OnSettingsChanged += OnSettingsChanged;
+        streamingController.OnConnectionStateChanged += HandleConnectionStateChanged;
         InitializeTrayIcon();
-    }
-
-    private async void Update() {
-        if (trayIcon == null || vrBro == null || vrBro._net == null) return;
-        if (Time.time - lastPingTime >= pingInterval) {
-            lastPingTime = Time.time;
-            await UpdateConnectionState();
-        }
     }
 
     private void OnDestroy() {
@@ -45,15 +37,12 @@ public class TrayManager : MonoBehaviour {
         settingsForm?.Dispose();
         trayThread?.Join(100);
         Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+        streamingController.OnConnectionStateChanged -= HandleConnectionStateChanged;
     }
 
-    public async Task UpdateConnectionState() {
-        if (trayIcon == null || vrBro == null || vrBro._net == null) return;
-        bool isConnected = await vrBro._net.CheckConnected();
-        if (isConnected != lastConnectionState) {
-            lastConnectionState = isConnected;
-            trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Lost Connection";
-        }
+    private void HandleConnectionStateChanged(bool isConnected) {
+        if (trayIcon == null) return;
+        trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Disconnected";
     }
 
     private void OnSettingsChanged() {
@@ -63,7 +52,6 @@ public class TrayManager : MonoBehaviour {
         }
     }
 
-    #region Tray Icon Management
     private void InitializeTrayIcon() {
         if (!System.Windows.Forms.Application.MessageLoop) {
             trayThread = new Thread(() => {
@@ -93,7 +81,7 @@ public class TrayManager : MonoBehaviour {
         });
 
         trayIcon = new NotifyIcon {
-            Text = "VRBro - No Server",
+            Text = "VRBro - Disconnected",
             ContextMenuStrip = trayMenu,
             Visible = true
         };
@@ -111,13 +99,11 @@ public class TrayManager : MonoBehaviour {
             trayIcon.Icon = SystemIcons.Application;
         }
     }
-    #endregion
 
-    #region Settings Management
     private void OnOpenSettings(object sender, EventArgs e) {
         try {
             if (settingsForm == null || settingsForm.IsDisposed) {
-                settingsForm = new NetworkSettingsForm(CurrentAddress, CurrentPort, SaveSettings);
+                settingsForm = new NetworkSettingsForm(CurrentAddress, CurrentPort, AttemptConnection);
             }
             
             if (!settingsForm.Visible) {
@@ -133,32 +119,11 @@ public class TrayManager : MonoBehaviour {
         }
     }
 
-    private async void SaveSettings(string address, int port) {
-        if (settingsForm == null || settingsForm.IsDisposed) return;
-
-        try {
-            bool verified = await VerifyConnection(address, port);
-            if (!settingsForm.IsDisposed) {
-                if (verified) {
-                    ExecuteOnMainThread(() => {
-                        Settings.Instance.ServerAddress = address;
-                        Settings.Instance.ServerPort = port;
-                    });
-                }
-                settingsForm.HandleConnectionUpdate(verified);
-            }
-        } catch (Exception ex) {
-            Debug.LogError($"Error in save settings: {ex.Message}");
-            if (!settingsForm.IsDisposed) {
-                settingsForm.HandleConnectionUpdate(false);
-            }
-        }
-    }
-
-    private async Task<bool> VerifyConnection(string address, int port) {
+    private async Task<bool> AttemptConnection(string address, int port) {
         if (vrBro?._net == null) return false;
 
         try {
+            
             string originalAddress = vrBro._net.serverAddr;
             int originalPort = vrBro._net.serverPort;
 
@@ -166,35 +131,23 @@ public class TrayManager : MonoBehaviour {
             vrBro._net.serverPort = port;
             vrBro._net.Close();
 
-            await Task.Delay(500);
-
-            using var cts = new CancellationTokenSource();
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5), cts.Token);
-            var connectionTask = vrBro._net.CheckConnected();
-            
-            var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
-            cts.Cancel();
-
-            bool isConnected = false;
-            if (completedTask == connectionTask && !connectionTask.IsFaulted) {
-                isConnected = await connectionTask;
-            }
+            var isConnected = await vrBro._net.CheckConnected();
 
             if (!isConnected) {
+                Debug.LogWarning("Connection attempt failed");
                 vrBro._net.serverAddr = originalAddress;
                 vrBro._net.serverPort = originalPort;
                 vrBro._net.Close();
             }
-
+            
             return isConnected;
+
         } catch (Exception ex) {
-            Debug.LogError($"Connection verification failed: {ex.Message}");
+            Debug.LogError($"Attempt Connection Failed: {ex.Message}");
             return false;
         }
     }
-    #endregion
 
-    #region Utility Methods
     private void OnQuit(object sender, EventArgs e) {
         ExecuteOnMainThread(() => {
             isRunning = false;
@@ -202,7 +155,7 @@ public class TrayManager : MonoBehaviour {
             #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
             #else
-                Application.Quit();
+                UnityEngine.Application.Quit();
             #endif
         });
     }
@@ -210,10 +163,8 @@ public class TrayManager : MonoBehaviour {
     private void ExecuteOnMainThread(Action action) {
         mainThread?.Post(_ => action(), null);
     }
-    #endregion
 }
 
-#region UI Components
 public class CustomContextMenuStrip : ContextMenuStrip {
     private static readonly Color MenuBackColor = ColorTranslator.FromHtml("#181819");
     private static readonly Color MenuForeColor = Color.White;
@@ -328,13 +279,12 @@ public class NetworkSettingsForm : Form {
     private readonly NumericUpDown portNumeric;
     private readonly RoundedButton saveButton;
     private readonly RoundedButton cancelButton;
-    private readonly Action<string, int> onSave;
     private readonly SemaphoreSlim connectionLock = new(1, 1);
+    private readonly Func<string, int, Task<bool>> onConnectionAttempt;
     private bool isConnecting;
-    private bool formClosing;
 
-    public NetworkSettingsForm(string currentAddress, int currentPort, Action<string, int> onSave) {
-        this.onSave = onSave;
+    public NetworkSettingsForm(string currentAddress, int currentPort, Func<string, int, Task<bool>> onConnectionAttempt) {
+        this.onConnectionAttempt = onConnectionAttempt;
         InitializeFormStyle();
         
         ipAddressBox = CreateIPAddressBox(currentAddress);
@@ -449,26 +399,6 @@ public class NetworkSettingsForm : Form {
         portNumeric.Value = port;
     }
 
-    public void HandleConnectionUpdate(bool connected) {
-        if (formClosing) return;
-        
-        try {
-            if (InvokeRequired) {
-                Invoke(new Action(() => HandleConnectionUpdate(connected)));
-                return;
-            }
-
-            isConnecting = false;
-            EnableControls(true);
-            
-            if (connected) {
-                Hide();
-            } else {
-                ShowCustomError("Failed to connect to server. Please check your settings.");
-            }
-        } catch (ObjectDisposedException) { }
-    }
-
     private async Task AttemptConnection() {
         if (string.IsNullOrWhiteSpace(ipAddressBox.Text)) {
             ShowCustomError("Please enter a valid IP address.");
@@ -481,15 +411,20 @@ public class NetworkSettingsForm : Form {
             return;
         }
 
+        if (isConnecting) return;
+        
         try {
-            await connectionLock.WaitAsync();
-            if (isConnecting) return;
-            
             isConnecting = true;
             EnableControls(false);
-            onSave(ipAddressBox.Text, (int)portNumeric.Value);
-        } finally {
-            connectionLock.Release();
+            saveButton.Text = "Connecting...";
+
+            if (await onConnectionAttempt(ipAddressBox.Text, (int)portNumeric.Value)) Hide();
+            else ShowCustomError("Failed to connect to server. \nPlease check your settings.");
+        }
+        finally {
+            isConnecting = false;
+            EnableControls(true);
+            saveButton.Text = "Save";
         }
     }
 
@@ -553,16 +488,6 @@ public class NetworkSettingsForm : Form {
         portNumeric.Enabled = enabled;
     }
 
-    protected override void OnFormClosing(FormClosingEventArgs e) {
-        if (e.CloseReason == CloseReason.UserClosing) {
-            e.Cancel = true;
-            formClosing = true;
-            Hide();
-            formClosing = false;
-        }
-        base.OnFormClosing(e);
-    }
-
     protected override void Dispose(bool disposing) {
         if (disposing) {
             connectionLock?.Dispose();
@@ -593,7 +518,7 @@ public class RoundedButton : Button {
         FlatAppearance.BorderSize = 0;
         FlatAppearance.MouseOverBackColor = Color.Transparent;
         FlatAppearance.MouseDownBackColor = Color.Transparent;
-        UpdateRegion();
+        // UpdateRegion();
     }
 
     private void SetupEventHandlers() {
@@ -624,15 +549,6 @@ public class RoundedButton : Button {
                         normalColor;
     }
 
-    protected override void OnSizeChanged(EventArgs e) {
-        base.OnSizeChanged(e);
-        UpdateRegion();
-    }
-
-    private void UpdateRegion() {
-        Region = Region.FromHrgn(CreateRoundRectRgn(0, 0, Width, Height, Radius, Radius));
-    }
-
     [System.Runtime.InteropServices.DllImport("Gdi32.dll")]
     private static extern IntPtr CreateRoundRectRgn(
         int nLeftRect, int nTopRect, 
@@ -660,4 +576,3 @@ public static class GraphicsExtensions {
         graphics.DrawPath(pen, path);
     }
 }
-#endregion
