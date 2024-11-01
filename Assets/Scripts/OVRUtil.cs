@@ -30,7 +30,11 @@ namespace OVRUtil
             var handle = OpenVR.k_ulOverlayHandleInvalid;
             var error = OpenVR.Overlay.CreateOverlay(key, name, ref handle);
             if (error != EVROverlayError.None) {
-                throw new Exception("Overlay failed to be created: " + error);
+                #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+                #else
+                UnityEngine.Application.Quit();
+                #endif
             } return handle;
         }
 
@@ -39,7 +43,11 @@ namespace OVRUtil
             ulong thumbnailHandle = 0;
             var error = OpenVR.Overlay.CreateDashboardOverlay(key, name, ref dashboardHandle, ref thumbnailHandle);
             if (error != EVROverlayError.None) {
-                throw new Exception("Failed to create dashboard overlay: " + error);
+                #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+                #else
+                UnityEngine.Application.Quit();
+                #endif
             }
             return (dashboardHandle, thumbnailHandle);
         }

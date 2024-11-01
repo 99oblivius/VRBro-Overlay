@@ -150,9 +150,9 @@ public class TrayManager : MonoBehaviour {
             isRunning = false;
             cts.Cancel();
             #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
+            UnityEditor.EditorApplication.isPlaying = false;
             #else
-                UnityEngine.Application.Quit();
+            UnityEngine.Application.Quit();
             #endif
         });
     }

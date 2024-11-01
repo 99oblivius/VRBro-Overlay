@@ -1,8 +1,11 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class UIController : MonoBehaviour {
     [SerializeField] private Controller streamingController;
+
+    [SerializeField] private TextMeshProUGUI bufferStateText;
     [SerializeField] private Image bufferIndicator;
     [SerializeField] private Image recordingIndicator;
     [SerializeField] private Image streamingIndicator;
@@ -56,6 +59,7 @@ public class UIController : MonoBehaviour {
         }
 
         if (operation == StreamOperation.Buffer) {
+            bufferStateText.text = active ? "Buffer State: On" : "Buffer State: Off";
             indicator.material.SetFloat("_WaveAmplitude", active ? 0.5f : 0f);
         } else {
             indicator.color = active ? ActiveColor : InactiveColor;
@@ -125,6 +129,7 @@ public class UIController : MonoBehaviour {
     public async void OnBufferButtonClick() {
         if (!bindingsEnabled) return;
         bool isActive = streamingController.stateManager.BufferActive;
+        bufferStateText.text = isActive ? "Buffer State: Off" : "Buffer State: On";
         await streamingController.ToggleOperation(StreamOperation.Buffer, !isActive);
     }
 
