@@ -31,6 +31,16 @@ public class VRBro : MonoBehaviour {
         Overlay.Show(overlayHandle);
     }
 
+    private void Update() {
+        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
+        if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
+            var position = new Vector3(x, y, z);
+            var rotation = Quaternion.Euler(rotationX, rotationY, rotationZ);
+            Overlay.SetSize(overlayHandle, 0.016f);
+            Overlay.SetTransformRelative(overlayHandle, leftControllerIndex, position, rotation);
+        }
+    }
+
     private void OnApplicationQuit() {
         Overlay.Destroy(overlayHandle);
     }

@@ -17,8 +17,7 @@ public class HideWindow : MonoBehaviour
     private const int WS_EX_TOOLWINDOW = 0x0080;
     private const int SW_MINIMIZE = 2;
 
-    void Start()
-    {
+    void Start() {
         #if !UNITY_EDITOR
         IntPtr pMainWindow = GetActiveWindow();
         SetWindowLong(pMainWindow, GWL_EXSTYLE, GetWindowLong(pMainWindow, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
