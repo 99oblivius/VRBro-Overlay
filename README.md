@@ -1,5 +1,5 @@
 # VRBro Overlay for SteamVR
-![VRBro Banner](assets/VRBro_banner.png)
+![VRBro Banner](Assets/Resources/VRBro_banner.png)
 
 ## Introduction
 VRBro Overlay is a SteamVR companion application that provides seamless control of OBS Studio directly from within VR. Working in conjunction with the [VRBro Plugin for OBS](https://github.com/99oblivius/VRBro-plugin), it allows content creators to manage their streams and recordings without leaving their VR experience.
