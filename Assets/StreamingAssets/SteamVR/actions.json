@@ -1,53 +1,57 @@
 {
   "actions": [
     {
-      "name": "/actions/vrbro/in/SaveBuffer",
+      "name": "/actions/VRBro/in/SaveBuffer",
       "type": "boolean",
       "requirement": "suggested"
     },
     {
-      "name": "/actions/vrbro/in/StartBuffer",
+      "name": "/actions/VRBro/in/StartBuffer",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/StopBuffer",
+      "name": "/actions/VRBro/in/StopBuffer",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/StartRecording",
+      "name": "/actions/VRBro/in/StartRecording",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/StopRecording",
+      "name": "/actions/VRBro/in/StopRecording",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/StartStreaming",
+      "name": "/actions/VRBro/in/StartStreaming",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/StopStreaming",
+      "name": "/actions/VRBro/in/StopStreaming",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/in/SplitRecording",
+      "name": "/actions/VRBro/in/SplitRecording",
       "type": "boolean",
       "requirement": "optional"
     },
     {
-      "name": "/actions/vrbro/out/Haptic",
+      "name": "/actions/VRBro/out/Haptic",
       "type": "vibration"
+    },
+    {
+      "name": "/actions/VRBro/in/togglesceneselect",
+      "type": "boolean"
     }
   ],
   "action_sets": [
     {
-      "name": "/actions/vrbro",
+      "name": "/actions/VRBro",
       "usage": "leftright"
     }
   ],

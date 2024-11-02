@@ -12,9 +12,11 @@ public class InputController : MonoBehaviour {
     public UnityEvent OnStartStreaming;
     public UnityEvent OnStopStreaming;
     public UnityEvent OnSplitRecording;
+    public UnityEvent OnToggleSceneMenu;
 
     private bool bindingsEnabled = true;
     private ulong actionSetHandle = 0;
+    private ulong toggleSceneMenuHandle = 0;
     private ulong saveBufferHandle = 0;
     private ulong startBufferHandle = 0;
     private ulong stopBufferHandle = 0;
@@ -54,6 +56,7 @@ public class InputController : MonoBehaviour {
         GetActionHandle("/actions/VRBro/in/startstreaming", ref startStreamingHandle);
         GetActionHandle("/actions/VRBro/in/stopstreaming", ref stopStreamingHandle);
         GetActionHandle("/actions/VRBro/in/splitrecording", ref splitRecordingHandle);
+        GetActionHandle("/actions/VRBro/in/togglesceneselect", ref toggleSceneMenuHandle);
     }
 
     private void GetActionHandle(string actionPath, ref ulong handle) {
@@ -97,6 +100,7 @@ public class InputController : MonoBehaviour {
         CheckDigitalAction(startStreamingHandle, OnStartStreaming, digitalActionSize);
         CheckDigitalAction(stopStreamingHandle, OnStopStreaming, digitalActionSize);
         CheckDigitalAction(splitRecordingHandle, OnSplitRecording, digitalActionSize);
+        CheckDigitalAction(toggleSceneMenuHandle, OnToggleSceneMenu, digitalActionSize);
     }
 
     private void CheckDigitalAction(ulong actionHandle, UnityEvent action, uint actionSize) {

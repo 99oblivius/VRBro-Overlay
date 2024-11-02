@@ -29,8 +29,18 @@
       "sources": [],
       "skeleton": []
     },
-    "/actions/vrbro": {
-      "chords": [],
+    "/actions/VRBro": {
+      "chords": [
+        {
+          "output": "/actions/VRBro/in/togglesceneselect",
+          "inputs": [
+            "/user/hand/left/input/a",
+            "/user/hand/left/input/b",
+            "/user/hand/left/input/grip"
+          ]
+        }
+
+      ],
       "poses": [],
       "haptics": [],
       "skeleton": [],
@@ -44,7 +54,7 @@
           },
           "inputs": {
             "long": {
-              "output": "/actions/vrbro/in/SaveBuffer"
+              "output": "/actions/VRBro/in/SaveBuffer"
             }
           }
         }
