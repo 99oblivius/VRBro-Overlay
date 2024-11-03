@@ -44,9 +44,7 @@ public class Network
     }
 
     private async Task<int> SendPayloadEvent(ActionTypeEvent action, string msg) {
-        var packet = CreatePacket(false, (byte)action);
-        if (!string.IsNullOrEmpty(msg))
-            packet.AddRange(System.Text.Encoding.UTF8.GetBytes(msg));
+        var packet = CreatePacket(false, (byte)action, msg);
         var (payload, _) = await SendPacketWithPayload(packet);
         return payload;
     }
@@ -62,15 +60,13 @@ public class Network
     }
 
     private async Task<(int, string)> SendPacketWithPayload(List<byte> packet) {
-        if (_client == null || !_client.IsConnected())
-        {
+        if (_client == null || !_client.IsConnected()) {
             await Connect(serverAddr, serverPort);
         }
         if (!_client.IsConnected())
             return (-1, string.Empty);
 
-        try
-        {
+        try {
             await _networkLock.WaitAsync();
             byte[] response = await _client.SendMessageWithResponse(packet);
             
@@ -79,19 +75,15 @@ public class Network
             
             int status = ParseResponse(response);
             string payload = string.Empty;
-            if (response.Length > 1)
-            {
+            if (response.Length > 1) {
                 payload = System.Text.Encoding.UTF8.GetString(response, 1, response.Length - 1);
+                payload = payload.TrimEnd('\n', '\r');
             }
 
             return (status, payload);
-        }
-        catch (Exception)
-        {
+        } catch (Exception) {
             return (-1, string.Empty);
-        }
-        finally
-        {
+        } finally {
             _networkLock.Release();
         }
     }
@@ -116,11 +108,17 @@ public class Network
         }
     }
 
-    private static List<byte> CreatePacket(bool isRequest, byte action) {
-        return new List<byte> {
-            (byte)((isRequest ? 0 : 1 << 7) | (action & 0x3F)),
-            (byte)'\n'
+    private static List<byte> CreatePacket(bool isRequest, byte action, string payload = "") {
+        var packet = new List<byte>
+        {
+            (byte)((isRequest ? 0 : 1 << 7) | (action & 0x3F))
         };
+
+        if (!string.IsNullOrEmpty(payload)) {
+            packet.AddRange(System.Text.Encoding.UTF8.GetBytes(payload));
+        }
+        packet.Add((byte)'\n');
+        return packet;
     }
 
     private static int ParseResponse(byte[] response) {

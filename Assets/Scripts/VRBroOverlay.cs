@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using TMPro;
 using Valve.VR;
 using System;
-using UnityEngine.UIElements;
 using Button = UnityEngine.UI.Button;
+using UnityEngine.EventSystems;
 
 [Serializable]
 public class OverlayTransform {
@@ -69,10 +69,13 @@ public static class OverlayTransformExtensions {
     }
 }
 
-public class SceneSelectorOverlay : MonoBehaviour {
+public class VRBroOverlay : MonoBehaviour {
     [Header("References")]
     [SerializeField] private VRBro vrBro;
+    public RenderTexture renderTexture;
     [SerializeField] private InputController inputController;
+    public GraphicRaycaster graphicRaycaster;
+    public EventSystem eventSystem;
     [SerializeField] private Camera overlayCamera;
     [SerializeField] private RenderTexture overlayTexture;
     [SerializeField] private Canvas overlayCanvas;
@@ -114,6 +117,12 @@ public class SceneSelectorOverlay : MonoBehaviour {
         rotZ: 0
     );
 
+    [Space(10)]
+    [Header("Menu scaling")]
+    [SerializeField] private RectTransform rectMenuBg;
+    [SerializeField] private RectTransform rectMenuBorder;
+    [SerializeField] private RectTransform rectMenuBottom;
+
     private string currentScene;
     private string logoPath;
     private bool isMenuOpen;
@@ -129,6 +138,19 @@ public class SceneSelectorOverlay : MonoBehaviour {
     
     private void InitializeOverlay() {
         overlayHandle = Overlay.Create("VRBroOverlayKey", "VRBroOverlay");
+        
+        // Enable input handling
+        var error = OpenVR.Overlay.SetOverlayInputMethod(overlayHandle, VROverlayInputMethod.Mouse);
+        if (error != EVROverlayError.None) {
+            Debug.LogError($"Failed to set overlay input method: {error}");
+        }
+        
+        // Enable interaction flags
+        error = OpenVR.Overlay.SetOverlayFlag(overlayHandle, VROverlayFlags.SendVRSmoothScrollEvents, true);
+        if (error != EVROverlayError.None) {
+            Debug.LogError($"Failed to set overlay flags: {error}");
+        }
+        
         UpdateOverlayTransform(closedState);
         Overlay.SetFromFile(overlayHandle, logoPath);
         PopulateSceneList();
@@ -156,10 +178,50 @@ public class SceneSelectorOverlay : MonoBehaviour {
                 };
                 OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
                 Overlay.SetRenderTexture(overlayHandle, overlayTexture);
+                ProcessOverlayEvents();
             }
         } else if (Overlay.DashboardOverlayVisibility(overlayHandle)) {
             Overlay.Hide(overlayHandle);
         }
+    }
+
+    private void ProcessOverlayEvents() {
+        var vrEvent = new VREvent_t();
+        var uncbVREvent = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t));
+
+        while (OpenVR.Overlay.PollNextOverlayEvent(overlayHandle, ref vrEvent, uncbVREvent)) {
+            switch (vrEvent.eventType) {
+            case (uint)EVREventType.VREvent_MouseMove:
+                foreach (var b in sceneButtons) {
+                    b.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(61, 68, 80, 255);
+                }
+                var button = GetButtonByPosition(new Vector2(vrEvent.data.mouse.x, renderTexture.height - vrEvent.data.mouse.y));
+                if (button != null) {
+                    button.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(88, 97, 112, 255);
+                };
+                break;
+            
+            case (uint)EVREventType.VREvent_MouseButtonUp:
+                button = GetButtonByPosition(new Vector2(vrEvent.data.mouse.x, renderTexture.height - vrEvent.data.mouse.y));
+                if (button != null) {
+                    button.onClick.Invoke();
+                    button.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(61, 68, 80, 255);
+                };
+                break;
+            }
+        }
+    }
+
+    private Button GetButtonByPosition(Vector2 position) {
+        var pointerEventData = new PointerEventData(eventSystem) { position = position };
+
+        var raycastResultList = new List<RaycastResult>();
+        graphicRaycaster.Raycast(pointerEventData, raycastResultList);
+        var raycastResult = raycastResultList.Find(element => element.gameObject.GetComponent<Button>());
+
+        if (raycastResult.gameObject == null) return null;
+
+        return raycastResult.gameObject.GetComponent<Button>();
     }
     
     private void UpdateOverlayTransform(OverlayTransform state) {
@@ -232,7 +294,7 @@ public class SceneSelectorOverlay : MonoBehaviour {
     }
     
     private async void PopulateSceneList() {
-        int n = 1;
+        int n = 0;
         foreach (var button in sceneButtons) {
             if (button != null) Destroy(button.gameObject);
         }
@@ -243,6 +305,11 @@ public class SceneSelectorOverlay : MonoBehaviour {
         var (status, scenesPayload) = await vrBro._net.GetScenes();
         if (status < 0 || string.IsNullOrEmpty(scenesPayload)) return;
 
+        var (currentStatus, currentSceneName) = await vrBro._net.GetCurrentScene();
+        if (currentStatus >= 0) {
+            currentScene = currentSceneName;
+        }
+
         var scenes = scenesPayload.Split('\0');
         foreach (var scene in scenes) {
             if (!string.IsNullOrEmpty(scene)) {
@@ -251,21 +318,19 @@ public class SceneSelectorOverlay : MonoBehaviour {
             }
         }
 
-        var (currentStatus, currentSceneName) = await vrBro._net.GetCurrentScene();
-        if (currentStatus >= 0) {
-            currentScene = currentSceneName;
-        }
-
         var contentTransform = sceneListScroll.content.GetComponent<RectTransform>();
         float fontSize = sceneButtonPrefab.GetComponent<SceneButton>().buttonText.fontSize;
         float buttonHeight = fontSize + 3;
         
+        float UIYScaling = n * buttonHeight <= 290 ? (n+1) * buttonHeight - 10 : 300;
+
+        rectMenuBg.sizeDelta = rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
+        rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
+        rectMenuBottom.anchoredPosition = new Vector3(0, -UIYScaling, -4);
+
         contentTransform.sizeDelta = n * buttonHeight <= 290 ? 
             new Vector2(190, 0) : 
             new Vector2(190, n * buttonHeight - 290);
-        
-        Debug.Log($"Scenes: {scenes}");
-        Debug.Log($"CurrentScene: {currentSceneName}");
     }
     
     private void AddSceneButton(string sceneName) {
@@ -277,10 +342,8 @@ public class SceneSelectorOverlay : MonoBehaviour {
         sceneButtons.Add(buttonInstance);
     }
     
-    private async void SelectScene(string sceneName) {
+    public async void SelectScene(string sceneName) {
         if (vrBro._net == null) return;
-
-        Debug.Log($"Switching to scene: {sceneName}");
         var result = await vrBro._net.SetScene(sceneName);
         
         if (result >= 0) {

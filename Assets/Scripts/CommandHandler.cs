@@ -58,7 +58,7 @@ public static class BinaryOperation {
         byte header = 0;
         header |= (byte)((isPost ? 1 : 0) << 7);
         header |= (byte)((isBinary ? 1 : 0) << 6);
-        header |= (byte)actionType;
+        header |= actionType;
         return header;
     }
 }
