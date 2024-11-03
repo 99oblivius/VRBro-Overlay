@@ -87,15 +87,19 @@ public class VRBroOverlay : MonoBehaviour {
     [SerializeField] private float openDuration = 0.3f;
     [SerializeField] private float closeDuration = 0.2f;
     [SerializeField] private AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+
+    [Header("Interaction Settings")]
+    [SerializeField] private RectTransform cursor;
+    [SerializeField] private float scrollSpeed = 50f;
+    [SerializeField] private float hapticPulseDuration = 0.05f;
+    [SerializeField] private float hapticPulseStrength = 0.3f;
     
     [Header("Overlay Configuration")]
     private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
     
     [Space(10)]
     [Header("Overlay States")]
-    [Tooltip("Overlay configuration when menu is closed")]
-    [SerializeField] 
-    private OverlayTransform closedState = new(
+    [SerializeField] private OverlayTransform closedState = new(
         size: 0.016f,
         x: 0.002f,
         y: -0.014f,
@@ -105,9 +109,7 @@ public class VRBroOverlay : MonoBehaviour {
         rotZ: 4
     );
 
-    [Tooltip("Overlay configuration when menu is opened")]
-    [SerializeField] 
-    private OverlayTransform openState = new(
+    [SerializeField] private OverlayTransform openState = new(
         size: 0.3f,
         x: 0.1f,
         y: 0.05f,
@@ -117,7 +119,6 @@ public class VRBroOverlay : MonoBehaviour {
         rotZ: 0
     );
 
-    [Space(10)]
     [Header("Menu scaling")]
     [SerializeField] private RectTransform rectMenuBg;
     [SerializeField] private RectTransform rectMenuBorder;
@@ -129,36 +130,36 @@ public class VRBroOverlay : MonoBehaviour {
     private bool isAnimating;
     private List<Button> sceneButtons = new();
     private Coroutine animationCoroutine;
+    private Vector2 lastCursorPos;
+    private bool isDragging;
 
     private void Start() {
         logoPath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";
         InitializeOverlay();
         menuContainer.gameObject.SetActive(false);
+        if (cursor != null) {
+            cursor.gameObject.SetActive(false);
+            Vector3 cursorPos = cursor.position;
+            cursor.position = new Vector3(cursorPos.x, cursorPos.y, -6f);
+        }
     }
-    
+
     private void InitializeOverlay() {
         overlayHandle = Overlay.Create("VRBroOverlayKey", "VRBroOverlay");
         
-        // Enable input handling
         var error = OpenVR.Overlay.SetOverlayInputMethod(overlayHandle, VROverlayInputMethod.Mouse);
         if (error != EVROverlayError.None) {
             Debug.LogError($"Failed to set overlay input method: {error}");
-        }
-        
-        // Enable interaction flags
-        error = OpenVR.Overlay.SetOverlayFlag(overlayHandle, VROverlayFlags.SendVRSmoothScrollEvents, true);
-        if (error != EVROverlayError.None) {
-            Debug.LogError($"Failed to set overlay flags: {error}");
         }
         
         UpdateOverlayTransform(closedState);
         Overlay.SetFromFile(overlayHandle, logoPath);
         PopulateSceneList();
     }
-    
+
     private void Update() {
-        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(
-            ETrackedControllerRole.LeftHand);
+        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
+        var rightControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.RightHand);
             
         if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
             if (!Overlay.DashboardOverlayVisibility(overlayHandle)) {
@@ -178,69 +179,12 @@ public class VRBroOverlay : MonoBehaviour {
                 };
                 OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
                 Overlay.SetRenderTexture(overlayHandle, overlayTexture);
-                ProcessOverlayEvents();
             }
         } else if (Overlay.DashboardOverlayVisibility(overlayHandle)) {
             Overlay.Hide(overlayHandle);
         }
     }
 
-    private void ProcessOverlayEvents() {
-        var vrEvent = new VREvent_t();
-        var uncbVREvent = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(VREvent_t));
-
-        while (OpenVR.Overlay.PollNextOverlayEvent(overlayHandle, ref vrEvent, uncbVREvent)) {
-            switch (vrEvent.eventType) {
-            case (uint)EVREventType.VREvent_MouseMove:
-                foreach (var b in sceneButtons) {
-                    b.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(61, 68, 80, 255);
-                }
-                var button = GetButtonByPosition(new Vector2(vrEvent.data.mouse.x, renderTexture.height - vrEvent.data.mouse.y));
-                if (button != null) {
-                    button.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(88, 97, 112, 255);
-                };
-                break;
-            
-            case (uint)EVREventType.VREvent_MouseButtonUp:
-                button = GetButtonByPosition(new Vector2(vrEvent.data.mouse.x, renderTexture.height - vrEvent.data.mouse.y));
-                if (button != null) {
-                    button.onClick.Invoke();
-                    button.gameObject.GetComponent<UnityEngine.UI.Image>().color = new Color32(61, 68, 80, 255);
-                };
-                break;
-            }
-        }
-    }
-
-    private Button GetButtonByPosition(Vector2 position) {
-        var pointerEventData = new PointerEventData(eventSystem) { position = position };
-
-        var raycastResultList = new List<RaycastResult>();
-        graphicRaycaster.Raycast(pointerEventData, raycastResultList);
-        var raycastResult = raycastResultList.Find(element => element.gameObject.GetComponent<Button>());
-
-        if (raycastResult.gameObject == null) return null;
-
-        return raycastResult.gameObject.GetComponent<Button>();
-    }
-    
-    private void UpdateOverlayTransform(OverlayTransform state) {
-        if (overlayHandle == OpenVR.k_ulOverlayHandleInvalid) return;
-        
-        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(
-            ETrackedControllerRole.LeftHand);
-            
-        if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
-            Overlay.SetSize(overlayHandle, state.size);
-            Overlay.SetTransformRelative(
-                overlayHandle,
-                leftControllerIndex,
-                state.Position,
-                state.Rotation
-            );
-        }
-    }
-    
     public void ToggleMenu() {
         if (isAnimating) return;
         
@@ -291,6 +235,24 @@ public class VRBroOverlay : MonoBehaviour {
         
         isAnimating = false;
         animationCoroutine = null;
+    }
+
+    private void UpdateOverlayTransform(OverlayTransform state) {
+        if (overlayHandle == OpenVR.k_ulOverlayHandleInvalid) return;
+        
+        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(
+            ETrackedControllerRole.LeftHand);
+            
+        if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
+            Overlay.SetSize(overlayHandle, state.size);
+            // Menu is always positioned relative to left controller
+            Overlay.SetTransformRelative(
+                overlayHandle,
+                leftControllerIndex,
+                state.Position,
+                state.Rotation
+            );
+        }
     }
     
     private async void PopulateSceneList() {
@@ -345,6 +307,7 @@ public class VRBroOverlay : MonoBehaviour {
     public async void SelectScene(string sceneName) {
         if (vrBro._net == null) return;
         var result = await vrBro._net.SetScene(sceneName);
+        Debug.Log($"Button pressed!: {sceneName}");
         
         if (result >= 0) {
             currentScene = sceneName;
