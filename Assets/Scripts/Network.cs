@@ -38,6 +38,19 @@ public class Network
     #endregion
 
     #region Packet Handling
+    private async Task<(int, string)> SendPayloadRequest(ActionTypeRequest action) {
+        var packet = CreatePacket(true, (byte)action);
+        return await SendPacketWithPayload(packet);
+    }
+
+    private async Task<int> SendPayloadEvent(ActionTypeEvent action, string msg) {
+        var packet = CreatePacket(false, (byte)action);
+        if (!string.IsNullOrEmpty(msg))
+            packet.AddRange(System.Text.Encoding.UTF8.GetBytes(msg));
+        var (payload, _) = await SendPacketWithPayload(packet);
+        return payload;
+    }
+
     private async Task<int> SendRequest(ActionTypeRequest action) {
         var packet = CreatePacket(true, (byte)action);
         return await SendPacketWithConnection(packet);
@@ -46,6 +59,41 @@ public class Network
     private async Task<int> SendEvent(ActionTypeEvent action) {
         var packet = CreatePacket(false, (byte)action);
         return await SendPacketWithConnection(packet);
+    }
+
+    private async Task<(int, string)> SendPacketWithPayload(List<byte> packet) {
+        if (_client == null || !_client.IsConnected())
+        {
+            await Connect(serverAddr, serverPort);
+        }
+        if (!_client.IsConnected())
+            return (-1, string.Empty);
+
+        try
+        {
+            await _networkLock.WaitAsync();
+            byte[] response = await _client.SendMessageWithResponse(packet);
+            
+            if (response == null || response.Length == 0) 
+                return (-1, string.Empty);
+            
+            int status = ParseResponse(response);
+            string payload = string.Empty;
+            if (response.Length > 1)
+            {
+                payload = System.Text.Encoding.UTF8.GetString(response, 1, response.Length - 1);
+            }
+
+            return (status, payload);
+        }
+        catch (Exception)
+        {
+            return (-1, string.Empty);
+        }
+        finally
+        {
+            _networkLock.Release();
+        }
     }
 
     private async Task<int> SendPacketWithConnection(List<byte> packet) {
@@ -97,5 +145,10 @@ public class Network
     public async Task<int> IsStreamingActive()    => await SendRequest(ActionTypeRequest.StreamingActive);
     public async Task<int> StartStreaming()       => await SendEvent(ActionTypeEvent.StartStreaming);
     public async Task<int> StopStreaming()        => await SendEvent(ActionTypeEvent.StopStreaming);
+
+    // Scene Operations
+    public async Task<(int, string)> GetCurrentScene() => await SendPayloadRequest(ActionTypeRequest.GetCurrentScene);
+    public async Task<(int, string)> GetScenes()       => await SendPayloadRequest(ActionTypeRequest.GetScenes);
+    public async Task<int> SetScene(string msg)        => await SendPayloadEvent(ActionTypeEvent.SetScene, msg);
     #endregion
 }

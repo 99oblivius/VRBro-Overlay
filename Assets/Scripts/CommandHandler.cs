@@ -8,6 +8,8 @@ public enum ActionTypeRequest : byte {
     ReplayBufferActive,
     RecordingActive,
     StreamingActive,
+    GetCurrentScene,
+    GetScenes,
 }
 public enum ActionTypeEvent : byte {
     Ping = 0,
@@ -19,6 +21,7 @@ public enum ActionTypeEvent : byte {
     StartStreaming,
     StopStreaming,
     RecordingSplitFile,
+    SetScene,
 }
 
 public static class BinaryOperation {

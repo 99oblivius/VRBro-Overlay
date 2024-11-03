@@ -3,9 +3,9 @@ using UnityEngine.UI;
 using TMPro;
 
 public class SceneButton : MonoBehaviour {
-    [SerializeField] private Button button;
-    [SerializeField] private TextMeshProUGUI buttonText;
-    [SerializeField] private Image backgroundImage;
+    [SerializeField] public Button button;
+    [SerializeField] public TextMeshProUGUI buttonText;
+    [SerializeField] public Image backgroundImage;
     
     private static readonly Color32 NormalColor = new(61, 68, 80, 255);
     private static readonly Color32 HoverColor = new(88, 97, 112, 255);

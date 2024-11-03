@@ -1,34 +1,6 @@
 {
   "app_key": "application.generated.unity.vrbrooverlay.exe",
   "bindings": {
-    "/actions/buggy": {
-      "chords": [],
-      "poses": [],
-      "haptics": [],
-      "sources": [],
-      "skeleton": []
-    },
-    "/actions/default": {
-      "chords": [],
-      "poses": [],
-      "haptics": [],
-      "sources": [],
-      "skeleton": []
-    },
-    "/actions/platformer": {
-      "chords": [],
-      "poses": [],
-      "haptics": [],
-      "sources": [],
-      "skeleton": []
-    },
-    "/actions/testvrbro": {
-      "chords": [],
-      "poses": [],
-      "haptics": [],
-      "sources": [],
-      "skeleton": []
-    },
     "/actions/VRBro": {
       "chords": [
         {
@@ -36,7 +8,7 @@
           "inputs": [
             "/user/hand/left/input/a",
             "/user/hand/left/input/b",
-            "/user/hand/left/input/grip"
+            "/user/hand/left/input/trigger"
           ]
         }
 
@@ -57,13 +29,25 @@
               "output": "/actions/VRBro/in/SaveBuffer"
             }
           }
+        },
+        {
+          "path": "/user/hand/left/input/b",
+          "mode": "button",
+          "parameters": {},
+          "inputs": {}
+        },
+        {
+          "path": "/user/hand/left/input/trigger",
+          "mode": "button",
+          "parameters": {},
+          "inputs": {}
         }
       ]
     }
   },
   "category": "steamvr_input",
   "controller_type": "knuckles",
-  "description": "Hold A for 3 seconds to save the OBS replay buffer. Additional actions available for custom binding.",
+  "description": "Hold A for 3 seconds to save the OBS replay buffer. Left A+B+Trigger for scene select. Additional actions available for custom binding.",
   "name": "VRBro knuckles_default",
   "options": {},
   "simulated_actions": []

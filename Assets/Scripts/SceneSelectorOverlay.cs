@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using TMPro;
 using Valve.VR;
 using System;
+using UnityEngine.UIElements;
+using Button = UnityEngine.UI.Button;
 
 [Serializable]
 public class OverlayTransform {
@@ -112,6 +114,7 @@ public class SceneSelectorOverlay : MonoBehaviour {
         rotZ: 0
     );
 
+    private string currentScene;
     private string logoPath;
     private bool isMenuOpen;
     private bool isAnimating;
@@ -228,31 +231,75 @@ public class SceneSelectorOverlay : MonoBehaviour {
         animationCoroutine = null;
     }
     
-    private void PopulateSceneList() {
+    private async void PopulateSceneList() {
+        int n = 1;
         foreach (var button in sceneButtons) {
-            if (button != null) {
-                Destroy(button.gameObject);
-            }
+            if (button != null) Destroy(button.gameObject);
         }
         sceneButtons.Clear();
 
-        AddSceneButton("Main Camera");
-        AddSceneButton("Gameplay");
-        AddSceneButton("Overlay");
+        if (vrBro._net == null) return;
+
+        var (status, scenesPayload) = await vrBro._net.GetScenes();
+        if (status < 0 || string.IsNullOrEmpty(scenesPayload)) return;
+
+        var scenes = scenesPayload.Split('\0');
+        foreach (var scene in scenes) {
+            if (!string.IsNullOrEmpty(scene)) {
+                AddSceneButton(scene);
+                n++;
+            }
+        }
+
+        var (currentStatus, currentSceneName) = await vrBro._net.GetCurrentScene();
+        if (currentStatus >= 0) {
+            currentScene = currentSceneName;
+        }
+
+        var contentTransform = sceneListScroll.content.GetComponent<RectTransform>();
+        float fontSize = sceneButtonPrefab.GetComponent<SceneButton>().buttonText.fontSize;
+        float buttonHeight = fontSize + 3;
+        
+        contentTransform.sizeDelta = n * buttonHeight <= 290 ? 
+            new Vector2(190, 0) : 
+            new Vector2(190, n * buttonHeight - 290);
+        
+        Debug.Log($"Scenes: {scenes}");
+        Debug.Log($"CurrentScene: {currentSceneName}");
     }
     
     private void AddSceneButton(string sceneName) {
         var buttonInstance = Instantiate(sceneButtonPrefab, sceneListScroll.content);
         var buttonText = buttonInstance.GetComponentInChildren<TMP_Text>();
-        if (buttonText != null) {
-            buttonText.text = sceneName;
-        }
+        if (buttonText != null) buttonText.text = sceneName;
+        buttonText.fontStyle = sceneName == currentScene ? FontStyles.Underline : FontStyles.Normal;
         buttonInstance.onClick.AddListener(() => SelectScene(sceneName));
         sceneButtons.Add(buttonInstance);
     }
     
-    private void SelectScene(string sceneName) {
-        Debug.Log($"Selected scene: {sceneName}");
+    private async void SelectScene(string sceneName) {
+        if (vrBro._net == null) return;
+
+        Debug.Log($"Switching to scene: {sceneName}");
+        var result = await vrBro._net.SetScene(sceneName);
+        
+        if (result >= 0) {
+            currentScene = sceneName;
+            foreach (var button in sceneButtons) {
+                var sceneButton = button.GetComponent<SceneButton>();
+                if (sceneButton != null) {
+                    foreach (var b in sceneButtons) {
+                        if (b != null) {
+                            var text = b.gameObject.GetComponentInChildren<TMP_Text>();
+                            text.fontStyle = FontStyles.Normal;
+                        }
+                    }
+                    var buttonText = sceneButton.GetComponentInChildren<TMP_Text>();
+                    buttonText.fontStyle = FontStyles.Underline;
+                }
+            }
+        }
+        
         ToggleMenu();
     }
 
