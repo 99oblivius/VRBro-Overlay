@@ -277,11 +277,12 @@ public class VRBroOverlay : MonoBehaviour {
         float scenePad = sceneListScroll.GetComponent<RectTransform>().position.y;
         float buttonPad = sceneListScroll.content.GetComponent<VerticalLayoutGroup>().padding.top;
 
-        float UIYScaling = Mathf.Min(300f, sceneButtons.Count * (buttonHeight + buttonSpacing) + buttonPad + scenePad);
+        float YScaling = sceneButtons.Count * (buttonHeight + buttonSpacing) + buttonPad + scenePad;
+        float UIYScaling = Mathf.Min(300f, YScaling);
 
         rectMenuBg.sizeDelta = rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
         rectMenuBottom.anchoredPosition = new Vector2(0, -UIYScaling);
-        contentTransform.sizeDelta = new Vector2(190, UIYScaling);
+        contentTransform.sizeDelta = new Vector2(190, YScaling);
     }
 
     private void AddSceneButton(string sceneName) {

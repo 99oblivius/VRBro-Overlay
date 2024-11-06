@@ -17,6 +17,8 @@ public class VRPointerController : MonoBehaviour {
     [Header("Pointer Settings")]
     [SerializeField] private ETrackedControllerRole pointerHand = ETrackedControllerRole.RightHand;
     [SerializeField] private float cursorZOffset = -5f;
+    [SerializeField] private float dragThreshold = 50f;
+    [SerializeField] private float scrollSensitivity = 1f;
     
     [Header("Haptic Feedback")]
     [SerializeField] private float hapticPulseDuration = 0.05f;
@@ -27,6 +29,14 @@ public class VRPointerController : MonoBehaviour {
     private TrackedDevicePose_t[] poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
     private ulong actionSetHandle;
     private ulong interactActionHandle;
+
+    // Drag tracking
+    private bool isDragging;
+    private bool exceededThreshold;
+    private Vector2 dragStartPosition;
+    private GameObject dragStartObject;
+    private ScrollRect activeScrollRect;
+    private GameObject lastHoveredForHaptics;
 
     private void Start() {
         if (!graphicRaycaster) graphicRaycaster = targetCanvas.GetComponent<GraphicRaycaster>();
@@ -173,7 +183,6 @@ public class VRPointerController : MonoBehaviour {
             var hit = results[0];
             var canvasRect = targetCanvas.GetComponent<RectTransform>().rect;
             
-            // Convert screen position to canvas-local coordinates
             var canvasPos = new Vector2(
                 (screenPos.x / overlayCamera.pixelWidth - 0.5f) * canvasRect.width,
                 (screenPos.y / overlayCamera.pixelHeight - 0.5f) * canvasRect.height
@@ -181,25 +190,67 @@ public class VRPointerController : MonoBehaviour {
             
             cursor.localPosition = new Vector3(canvasPos.x, canvasPos.y, cursorZOffset);
             
-            if (hit.gameObject != lastHoveredObject) {
+            if (hit.gameObject != lastHoveredObject && !isDragging) {
                 HandleHoverStateChange(hit.gameObject);
             }
+
+            HandleDragAndClick(results[0], screenPos);
         } else {
             cursor.gameObject.SetActive(false);
-        }
-
-        if (GetTriggerState() && isOverUI) {
-            var button = results[0].gameObject.GetComponent<Button>();
-            if (button != null && button.interactable) {
-                button.onClick.Invoke();
-                ProvideTactileFeedback(rightIndex);
+            if (!isDragging) {
+                lastHoveredObject = null;
             }
         }
+    }
 
-        lastHoveredObject = isOverUI ? results[0].gameObject : null;
+    private void HandleDragAndClick(RaycastResult hit, Vector2 currentPos) {
+        var triggerState = GetTriggerState();
+        
+        // Start drag
+        if (triggerState && !isDragging) {
+            isDragging = true;
+            exceededThreshold = false;
+            dragStartPosition = currentPos;
+            dragStartObject = hit.gameObject;
+            
+            var eventModule = hit.module as GraphicRaycaster;
+            if (eventModule != null) {
+                activeScrollRect = eventModule.GetComponent<Canvas>()?.GetComponentInChildren<ScrollRect>();
+            }
+        }
+        // End drag/click
+        else if (!triggerState && isDragging) {
+            if (!exceededThreshold && hit.gameObject == dragStartObject) {
+                var button = dragStartObject.GetComponent<Button>();
+                if (button != null && button.interactable) {
+                    button.onClick.Invoke();
+                    ProvideTactileFeedback(OpenVR.System.GetTrackedDeviceIndexForControllerRole(pointerHand));
+                }
+            }
+            
+            isDragging = false;
+            activeScrollRect = null;
+            dragStartObject = null;
+        }
+        // Handle scrolling during drag
+        else if (isDragging && activeScrollRect != null) {
+            var delta = currentPos - dragStartPosition;
+            
+            if (!exceededThreshold && delta.magnitude > dragThreshold) {
+                exceededThreshold = true;
+            }
+
+            if (exceededThreshold) {
+                float scrollDelta = delta.y * scrollSensitivity / overlayCamera.pixelHeight;
+                var contentPos = activeScrollRect.content.anchoredPosition;
+                contentPos.y = Mathf.Lerp(contentPos.y, contentPos.y + scrollDelta * 100f, Time.deltaTime * 10f);
+                activeScrollRect.content.anchoredPosition = contentPos;
+            }
+        }
     }
 
     private void HandleHoverStateChange(GameObject newHoverObject) {
+        // Update regular hover state for visual feedback
         if (lastHoveredObject != null) {
             var button = lastHoveredObject.GetComponent<Button>();
             if (button != null) {
@@ -211,11 +262,19 @@ public class VRPointerController : MonoBehaviour {
             var button = newHoverObject.GetComponent<Button>();
             if (button != null) {
                 button.OnPointerEnter(null);
+            }
+        }
+
+        // Handle haptic feedback separately
+        if (newHoverObject != lastHoveredForHaptics) {
+            var button = newHoverObject?.GetComponent<Button>();
+            if (button != null) {
                 ProvideTactileFeedback(
-                    OpenVR.System.GetTrackedDeviceIndexForControllerRole(pointerHand), 
+                    OpenVR.System.GetTrackedDeviceIndexForControllerRole(pointerHand),
                     hapticPulseStrength * 0.5f
                 );
             }
+            lastHoveredForHaptics = newHoverObject;
         }
     }
 
