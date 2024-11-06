@@ -1,21 +1,28 @@
 {
-  "app_key": "application.generated.unity.vrbrooverlay.exe",
+  "app_key": "application.generated.unity.vrbro.exe",
   "bindings": {
-    "/actions/VRBro": {
+    "/actions/vrbro": {
       "chords": [
         {
-          "output": "/actions/VRBro/in/togglesceneselect",
+          "output": "/actions/vrbro/in/togglesceneselect",
           "inputs": [
-            "/user/hand/left/input/a",
-            "/user/hand/left/input/b",
-            "/user/hand/left/input/trigger"
+            [
+              "/user/hand/left/input/a",
+              "held"
+            ],
+            [
+              "/user/hand/left/input/b",
+              "held"
+            ],
+            [
+              "/user/hand/left/input/trigger",
+              "click"
+            ]
           ]
         }
-
       ],
       "poses": [],
       "haptics": [],
-      "skeleton": [],
       "sources": [
         {
           "path": "/user/hand/left/input/a",
@@ -26,29 +33,43 @@
           },
           "inputs": {
             "long": {
-              "output": "/actions/VRBro/in/SaveBuffer"
+              "output": "/actions/vrbro/in/SaveBuffer"
             }
           }
         },
         {
           "path": "/user/hand/left/input/b",
           "mode": "button",
-          "parameters": {},
-          "inputs": {}
+          "parameters" : {},
+          "inputs": {
+            "click": {
+              "output": "/actions/VRBro/in/dummy"
+            }
+          }
+        },
+        {
+          "path": "/user/hand/right/input/trigger",
+          "mode": "button",
+          "inputs": {
+            "click": {
+              "output": "/actions/VRBro/in/InteractUI"
+            }
+          }
         },
         {
           "path": "/user/hand/left/input/trigger",
           "mode": "button",
-          "parameters": {},
-          "inputs": {}
+          "inputs": {
+            "click": {
+              "output": "/actions/VRBro/in/InteractUI"
+            }
+          }
         }
-      ]
+      ],
+      "skeleton": []
     }
   },
-  "category": "steamvr_input",
   "controller_type": "knuckles",
-  "description": "Hold A for 3 seconds to save the OBS replay buffer. Left A+B+Trigger for scene select. Additional actions available for custom binding.",
-  "name": "VRBro knuckles_default",
-  "options": {},
-  "simulated_actions": []
+  "description": "Hold A for 3 seconds to save the OBS replay buffer. Left A+B & Trigger for scene select.",
+  "name": "VRBro knuckles_default"
 }

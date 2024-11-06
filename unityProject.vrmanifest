@@ -2,13 +2,13 @@
   "source": "Unity",
   "applications": [
     {
-      "app_key": "application.generated.unity.vrobsremote.exe",
+      "app_key": "application.generated.unity.vrbro.exe",
       "launch_type": "url",
       "url": "steam://launch/",
       "action_manifest_path": "C:\\Users\\Livia\\Desktop\\Unity Projects\\VR-OBS-Remote\\Assets\\StreamingAssets\\SteamVR\\actions.json",
       "strings": {
         "en_us": {
-          "name": "VR-OBS-Remote [Testing]"
+          "name": "VRBro [Testing]"
         }
       }
     }

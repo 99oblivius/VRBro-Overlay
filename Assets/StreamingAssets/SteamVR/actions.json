@@ -1,6 +1,11 @@
 {
   "actions": [
     {
+      "name": "/actions/VRBro/in/InteractUI",
+      "type": "boolean",
+      "requirement": "suggested"
+    },
+    {
       "name": "/actions/VRBro/in/SaveBuffer",
       "type": "boolean",
       "requirement": "suggested"
@@ -41,12 +46,16 @@
       "requirement": "optional"
     },
     {
-      "name": "/actions/VRBro/out/Haptic",
-      "type": "vibration"
-    },
-    {
       "name": "/actions/VRBro/in/togglesceneselect",
       "type": "boolean"
+    },
+    {
+      "name": "/actions/VRBro/in/dummy",
+      "type": "boolean"
+    },
+    {
+      "name": "/actions/VRBro/out/Haptic",
+      "type": "vibration"
     }
   ],
   "action_sets": [
@@ -64,6 +73,7 @@
   "localization": [
     {
       "language_tag": "en_US",
+      "/actions/VRBro/in/InteractUI": "Interact UI",
       "/actions/vrbro/in/SaveBuffer": "Save Replay Buffer",
       "/actions/vrbro/in/StartBuffer": "Start Replay Buffer",
       "/actions/vrbro/in/StopBuffer": "Stop Replay Buffer",

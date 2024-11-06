@@ -11,35 +11,17 @@ using UnityEngine.EventSystems;
 
 [Serializable]
 public class OverlayTransform {
-    [Tooltip("Size of the overlay in meters")]
-    [Range(0, 0.5f)]
-    public float size;
-
+    [Range(0, 0.5f)] public float size;
+    
     [Header("Position")]
-    [Tooltip("X position relative to controller")]
-    [Range(-1f, 1f)]
-    public float posX;
-    
-    [Tooltip("Y position relative to controller")]
-    [Range(-1f, 1f)]
-    public float posY;
-    
-    [Tooltip("Z position relative to controller")]
-    [Range(-1f, 1f)]
-    public float posZ;
+    [Range(-1f, 1f)] public float posX;
+    [Range(-1f, 1f)] public float posY;
+    [Range(-1f, 1f)] public float posZ;
 
     [Header("Rotation")]
-    [Tooltip("X rotation in degrees")]
-    [Range(0, 360)]
-    public int rotX;
-    
-    [Tooltip("Y rotation in degrees")]
-    [Range(0, 360)]
-    public int rotY;
-    
-    [Tooltip("Z rotation in degrees")]
-    [Range(0, 360)]
-    public int rotZ;
+    [Range(0, 360)] public int rotX;
+    [Range(0, 360)] public int rotY;
+    [Range(0, 360)] public int rotZ;
 
     public Vector3 Position => new(posX, posY, posZ);
     public Quaternion Rotation => Quaternion.Euler(rotX, rotY, rotZ);
@@ -70,81 +52,79 @@ public static class OverlayTransformExtensions {
 }
 
 public class VRBroOverlay : MonoBehaviour {
+    #region Serialized Fields
     [Header("References")]
     [SerializeField] private VRBro vrBro;
-    public RenderTexture renderTexture;
     [SerializeField] private InputController inputController;
-    public GraphicRaycaster graphicRaycaster;
-    public EventSystem eventSystem;
     [SerializeField] private Camera overlayCamera;
-    [SerializeField] private RenderTexture overlayTexture;
     [SerializeField] private Canvas overlayCanvas;
     [SerializeField] private RectTransform menuContainer;
     [SerializeField] private ScrollRect sceneListScroll;
     [SerializeField] private Button sceneButtonPrefab;
+    [SerializeField] private RectTransform cursor;
+    
+    [Header("Components")]
+    public RenderTexture renderTexture;
+    public GraphicRaycaster graphicRaycaster;
+    public EventSystem eventSystem;
+    public RenderTexture overlayTexture;
 
-    [Header("Animation Settings")]
+    [Header("Animation")]
     [SerializeField] private float openDuration = 0.3f;
     [SerializeField] private float closeDuration = 0.2f;
     [SerializeField] private AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-
-    [Header("Interaction Settings")]
-    [SerializeField] private RectTransform cursor;
-    [SerializeField] private float scrollSpeed = 50f;
-    [SerializeField] private float hapticPulseDuration = 0.05f;
-    [SerializeField] private float hapticPulseStrength = 0.3f;
     
-    [Header("Overlay Configuration")]
-    private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
-    
-    [Space(10)]
-    [Header("Overlay States")]
-    [SerializeField] private OverlayTransform closedState = new(
-        size: 0.016f,
-        x: 0.002f,
-        y: -0.014f,
-        z: -0.179f,
-        rotX: 64,
-        rotY: 0,
-        rotZ: 4
-    );
-
-    [SerializeField] private OverlayTransform openState = new(
-        size: 0.3f,
-        x: 0.1f,
-        y: 0.05f,
-        z: -0.1f,
-        rotX: 30,
-        rotY: 0,
-        rotZ: 0
-    );
-
-    [Header("Menu scaling")]
+    [Header("UI Scaling")]
     [SerializeField] private RectTransform rectMenuBg;
     [SerializeField] private RectTransform rectMenuBorder;
     [SerializeField] private RectTransform rectMenuBottom;
 
-    private string currentScene;
-    private string logoPath;
-    private bool isMenuOpen;
-    private bool isAnimating;
-    private List<Button> sceneButtons = new();
-    private Coroutine animationCoroutine;
-    private Vector2 lastCursorPos;
-    private bool isDragging;
+    [Header("Overlay States")]
+    [SerializeField] private OverlayTransform closedState = new(
+        size: 0.016f, x: 0.002f, y: -0.014f, z: -0.179f,
+        rotX: 64, rotY: 0, rotZ: 4
+    );
 
+    [SerializeField] public OverlayTransform openState = new(
+        size: 0.3f, x: 0.1f, y: 0.05f, z: -0.1f,
+        rotX: 30, rotY: 0, rotZ: 0
+    );
+    #endregion
+
+    #region Private Fields
+    private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
+    private string logoPath;
+    private List<Button> sceneButtons = new();
+    private string currentScene;
+    private Coroutine animationCoroutine;
+    private bool isAnimating;
+    public bool isMenuOpen { get; private set; }
+    #endregion
+
+    #region Unity Lifecycle
     private void Start() {
-        logoPath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";
         InitializeOverlay();
-        menuContainer.gameObject.SetActive(false);
-        if (cursor != null) {
-            cursor.gameObject.SetActive(false);
-            Vector3 cursorPos = cursor.position;
-            cursor.position = new Vector3(cursorPos.x, cursorPos.y, -6f);
-        }
+        SetupInitialState();
     }
 
+    private void Update() {
+        UpdateOverlayState();
+    }
+
+    private void OnDestroy() {
+        if (animationCoroutine != null) {
+            StopCoroutine(animationCoroutine);
+        }
+        
+        if (overlayHandle != 0) {
+            Overlay.Destroy(overlayHandle);
+        }
+    }
+    #endregion
+
+    #region Initialization
     private void InitializeOverlay() {
+        logoPath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";
         overlayHandle = Overlay.Create("VRBroOverlayKey", "VRBroOverlay");
         
         var error = OpenVR.Overlay.SetOverlayInputMethod(overlayHandle, VROverlayInputMethod.Mouse);
@@ -154,37 +134,64 @@ public class VRBroOverlay : MonoBehaviour {
         
         UpdateOverlayTransform(closedState);
         Overlay.SetFromFile(overlayHandle, logoPath);
-        PopulateSceneList();
     }
 
-    private void Update() {
+    private void SetupInitialState() {
+        menuContainer.gameObject.SetActive(false);
+        if (cursor != null) {
+            cursor.gameObject.SetActive(false);
+            Vector3 cursorPos = cursor.position;
+            cursor.position = new Vector3(cursorPos.x, cursorPos.y, -6f);
+        }
+        PopulateSceneList();
+    }
+    #endregion
+
+    #region Overlay Management
+    private void UpdateOverlayState() {
         var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
-        var rightControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.RightHand);
             
         if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
-            if (!Overlay.DashboardOverlayVisibility(overlayHandle)) {
-                Overlay.Show(overlayHandle);
-            }
-
-            if (!isAnimating) {
-                UpdateOverlayTransform(isMenuOpen ? openState : closedState);
-            }
-            
-            if (isMenuOpen) {
-                var bounds = new VRTextureBounds_t {
-                    uMin = 0,
-                    uMax = 1,
-                    vMin = 1,
-                    vMax = 0
-                };
-                OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-                Overlay.SetRenderTexture(overlayHandle, overlayTexture);
-            }
-        } else if (Overlay.DashboardOverlayVisibility(overlayHandle)) {
+            HandleVisibleOverlay(leftControllerIndex);
+        } 
+        else if (Overlay.DashboardOverlayVisibility(overlayHandle)) {
             Overlay.Hide(overlayHandle);
         }
     }
 
+    private void HandleVisibleOverlay(uint leftControllerIndex) {
+        if (!Overlay.DashboardOverlayVisibility(overlayHandle)) {
+            Overlay.Show(overlayHandle);
+        }
+
+        if (!isAnimating) {
+            UpdateOverlayTransform(isMenuOpen ? openState : closedState);
+        }
+        
+        if (isMenuOpen) {
+            UpdateOverlayTexture();
+        }
+    }
+
+    private void UpdateOverlayTexture() {
+        var bounds = new VRTextureBounds_t { uMin = 0, uMax = 1, vMin = 1, vMax = 0 };
+        OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
+        Overlay.SetRenderTexture(overlayHandle, overlayTexture);
+    }
+
+    private void UpdateOverlayTransform(OverlayTransform state) {
+        if (overlayHandle == OpenVR.k_ulOverlayHandleInvalid) return;
+        
+        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
+            
+        if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
+            Overlay.SetSize(overlayHandle, state.size);
+            Overlay.SetTransformRelative(overlayHandle, leftControllerIndex, state.Position, state.Rotation);
+        }
+    }
+    #endregion
+
+    #region Menu Management
     public void ToggleMenu() {
         if (isAnimating) return;
         
@@ -201,7 +208,7 @@ public class VRBroOverlay : MonoBehaviour {
             UpdateSceneList();
         }
     }
-    
+
     private IEnumerator AnimateOverlay(bool opening) {
         isAnimating = true;
         float time = 0;
@@ -213,22 +220,14 @@ public class VRBroOverlay : MonoBehaviour {
         while (time < duration) {
             time += Time.deltaTime;
             float t = transitionCurve.Evaluate(time / duration);
-            
-            var currentState = OverlayTransformExtensions.Lerp(startState, endState, t);
-            UpdateOverlayTransform(currentState);
-            
+            UpdateOverlayTransform(OverlayTransformExtensions.Lerp(startState, endState, t));
             yield return null;
         }
         
         UpdateOverlayTransform(endState);
         
         if (!opening) {
-            var bounds = new VRTextureBounds_t {
-                uMin = 0,
-                uMax = 1,
-                vMin = 0,
-                vMax = 1
-            };
+            var bounds = new VRTextureBounds_t { uMin = 0, uMax = 1, vMin = 0, vMax = 1 };
             OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
             Overlay.SetFromFile(overlayHandle, logoPath);
         }
@@ -236,31 +235,11 @@ public class VRBroOverlay : MonoBehaviour {
         isAnimating = false;
         animationCoroutine = null;
     }
+    #endregion
 
-    private void UpdateOverlayTransform(OverlayTransform state) {
-        if (overlayHandle == OpenVR.k_ulOverlayHandleInvalid) return;
-        
-        var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(
-            ETrackedControllerRole.LeftHand);
-            
-        if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
-            Overlay.SetSize(overlayHandle, state.size);
-            // Menu is always positioned relative to left controller
-            Overlay.SetTransformRelative(
-                overlayHandle,
-                leftControllerIndex,
-                state.Position,
-                state.Rotation
-            );
-        }
-    }
-    
+    #region Scene Management
     private async void PopulateSceneList() {
-        int n = 0;
-        foreach (var button in sceneButtons) {
-            if (button != null) Destroy(button.gameObject);
-        }
-        sceneButtons.Clear();
+        ClearSceneButtons();
 
         if (vrBro._net == null) return;
 
@@ -272,74 +251,76 @@ public class VRBroOverlay : MonoBehaviour {
             currentScene = currentSceneName;
         }
 
-        var scenes = scenesPayload.Split('\0');
+        CreateSceneButtons(scenesPayload.Split('\0'));
+        UpdateMenuScaling();
+    }
+
+    private void ClearSceneButtons() {
+        foreach (var button in sceneButtons) {
+            if (button != null) Destroy(button.gameObject);
+        }
+        sceneButtons.Clear();
+    }
+
+    private void CreateSceneButtons(string[] scenes) {
         foreach (var scene in scenes) {
             if (!string.IsNullOrEmpty(scene)) {
                 AddSceneButton(scene);
-                n++;
             }
         }
+    }
 
+    private void UpdateMenuScaling() {
         var contentTransform = sceneListScroll.content.GetComponent<RectTransform>();
-        float fontSize = sceneButtonPrefab.GetComponent<SceneButton>().buttonText.fontSize;
-        float buttonHeight = fontSize + 3;
-        
-        float UIYScaling = n * buttonHeight <= 290 ? (n+1) * buttonHeight - 10 : 300;
+        float buttonHeight = sceneButtonPrefab.gameObject.GetComponent<RectTransform>().rect.height;
+        float buttonSpacing = sceneListScroll.content.GetComponent<VerticalLayoutGroup>().spacing;
+        float scenePad = sceneListScroll.GetComponent<RectTransform>().position.y;
+        float buttonPad = sceneListScroll.content.GetComponent<VerticalLayoutGroup>().padding.top;
+
+        float UIYScaling = Mathf.Min(300f, sceneButtons.Count * (buttonHeight + buttonSpacing) + buttonPad + scenePad);
 
         rectMenuBg.sizeDelta = rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
-        rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
-        rectMenuBottom.anchoredPosition = new Vector3(0, -UIYScaling, -4);
-
-        contentTransform.sizeDelta = n * buttonHeight <= 290 ? 
-            new Vector2(190, 0) : 
-            new Vector2(190, n * buttonHeight - 290);
+        rectMenuBottom.anchoredPosition = new Vector2(0, -UIYScaling);
+        contentTransform.sizeDelta = new Vector2(190, UIYScaling);
     }
-    
+
     private void AddSceneButton(string sceneName) {
         var buttonInstance = Instantiate(sceneButtonPrefab, sceneListScroll.content);
         var buttonText = buttonInstance.GetComponentInChildren<TMP_Text>();
-        if (buttonText != null) buttonText.text = sceneName;
-        buttonText.fontStyle = sceneName == currentScene ? FontStyles.Underline : FontStyles.Normal;
+        if (buttonText != null) {
+            buttonText.text = sceneName;
+            buttonText.fontStyle = sceneName == currentScene ? FontStyles.Bold : FontStyles.Normal;
+        }
         buttonInstance.onClick.AddListener(() => SelectScene(sceneName));
         sceneButtons.Add(buttonInstance);
     }
     
     public async void SelectScene(string sceneName) {
         if (vrBro._net == null) return;
-        var result = await vrBro._net.SetScene(sceneName);
-        Debug.Log($"Button pressed!: {sceneName}");
         
+        var result = await vrBro._net.SetScene(sceneName);
         if (result >= 0) {
-            currentScene = sceneName;
-            foreach (var button in sceneButtons) {
-                var sceneButton = button.GetComponent<SceneButton>();
-                if (sceneButton != null) {
-                    foreach (var b in sceneButtons) {
-                        if (b != null) {
-                            var text = b.gameObject.GetComponentInChildren<TMP_Text>();
-                            text.fontStyle = FontStyles.Normal;
-                        }
-                    }
-                    var buttonText = sceneButton.GetComponentInChildren<TMP_Text>();
-                    buttonText.fontStyle = FontStyles.Underline;
-                }
-            }
+            UpdateSelectedSceneUI(sceneName);
         }
         
         ToggleMenu();
     }
 
-    private void UpdateSceneList() {
-        PopulateSceneList();
-    }
-    
-    private void OnDestroy() {
-        if (animationCoroutine != null) {
-            StopCoroutine(animationCoroutine);
+    private void UpdateSelectedSceneUI(string sceneName) {
+        currentScene = sceneName;
+        foreach (var button in sceneButtons) {
+            if (button != null) {
+                var text = button.gameObject.GetComponentInChildren<TMP_Text>();
+                text.fontStyle = FontStyles.Normal;
+            }
         }
-        
-        if (overlayHandle != 0) {
-            Overlay.Destroy(overlayHandle);
+        var selectedButton = sceneButtons.Find(b => 
+            b.GetComponentInChildren<TMP_Text>().text == sceneName);
+        if (selectedButton != null) {
+            selectedButton.GetComponentInChildren<TMP_Text>().fontStyle = FontStyles.Underline;
         }
     }
+
+    private void UpdateSceneList() => PopulateSceneList();
+    #endregion
 }
