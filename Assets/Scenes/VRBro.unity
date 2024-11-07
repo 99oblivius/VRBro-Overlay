@@ -1427,7 +1427,7 @@ MonoBehaviour:
   pointerHand: 2
   cursorZOffset: -5
   dragThreshold: 45
-  scrollSensitivity: 0.5
+  scrollSensitivity: 0.667
   hapticPulseDuration: 0.05
   hapticPulseStrength: 0.2
 --- !u!1 &553621842

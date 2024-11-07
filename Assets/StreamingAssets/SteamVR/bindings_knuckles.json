@@ -61,7 +61,7 @@
           "mode": "button",
           "inputs": {
             "click": {
-              "output": "/actions/VRBro/in/InteractUI"
+              "output": "/actions/VRBro/in/dummy"
             }
           }
         }

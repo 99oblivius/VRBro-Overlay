@@ -96,7 +96,7 @@ public class VRBroOverlay : MonoBehaviour {
     private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
     private string logoPath;
     private List<Button> sceneButtons = new();
-    public string currentScene;
+    public string currentScene { get; private set; }
     private Coroutine animationCoroutine;
     private bool isAnimating;
     public bool isMenuOpen { get; private set; }
