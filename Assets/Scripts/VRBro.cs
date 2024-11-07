@@ -1,25 +1,40 @@
-using System;
 using UnityEngine;
 using Valve.VR;
 
 public class VRBro : MonoBehaviour {
-    public Network _net = null;
+    #region Public Fields
+    public Network _net;
     public SteamVR_Action_Vibration hapticAction;
+    #endregion
 
+    #region Unity Lifecycle
     private void Start() {
+        InitializeVR();
+        InitializeNetwork();
+    }
+
+    private void OnDestroy() {
+        Cleanup();
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializeVR() {
         OVRUtil.System.Init();
-        
-        
+    }
+
+    private void InitializeNetwork() {
         _net = new Network {
             serverAddr = Settings.Instance.ServerAddress,
             serverPort = Settings.Instance.ServerPort
         };
-
-        var filePath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";
     }
+    #endregion
 
-    private void OnDestroy() {
+    #region Cleanup
+    private void Cleanup() {
         OVRUtil.System.Shutdown();
         _net?.Close();
     }
+    #endregion
 }

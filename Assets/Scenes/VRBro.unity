@@ -1234,9 +1234,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   vrBro: {fileID: 1693267238}
-  inputController: {fileID: 1727105638}
   overlayCamera: {fileID: 56949646}
-  overlayCanvas: {fileID: 1863673012}
   menuContainer: {fileID: 1863673009}
   sceneListScroll: {fileID: 1635750602}
   scrollbar: {fileID: 988906331}
@@ -1428,7 +1426,6 @@ MonoBehaviour:
   cursorZOffset: -5
   dragThreshold: 45
   scrollSensitivity: 0.667
-  hapticPulseDuration: 0.05
   hapticPulseStrength: 0.2
 --- !u!1 &553621842
 GameObject:
@@ -3144,16 +3141,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d487c42a2673849469018cc5ec6fdba7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  VRBro: {fileID: 1693267238}
   renderTexture: {fileID: 8400000, guid: e9016c63c492c284a828f743c0c8f3af, type: 2}
   graphicRaycaster: {fileID: 1598672894}
   eventSystem: {fileID: 440882924}
-  button1: {fileID: 368670292}
-  button2: {fileID: 368661638}
+  button1: {fileID: 1877617813}
+  button2: {fileID: 976644107}
   button3: {fileID: 79544217}
-  button4: {fileID: 976644107}
-  button5: {fileID: 1251899992}
-  button6: {fileID: 1877617813}
+  button4: {fileID: 1251899992}
+  button5: {fileID: 368661638}
+  button6: {fileID: 368670292}
 --- !u!4 &1455189225
 Transform:
   m_ObjectHideFlags: 0

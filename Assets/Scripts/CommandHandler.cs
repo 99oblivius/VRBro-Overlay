@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-
 public enum ActionTypeRequest : byte {
     Ping = 0,
     ReplayBufferActive,
     RecordingActive,
     StreamingActive,
     GetCurrentScene,
-    GetScenes,
+    GetScenes
 }
+
 public enum ActionTypeEvent : byte {
     Ping = 0,
     StartReplayBuffer,
@@ -21,10 +21,11 @@ public enum ActionTypeEvent : byte {
     StartStreaming,
     StopStreaming,
     RecordingSplitFile,
-    SetScene,
+    SetScene
 }
 
 public static class BinaryOperation {
+    #region Public Methods
     public static byte[] CreatePacket(bool isPost, bool isBinary, byte actionType, string payload = "") {
         List<byte> packet = new();
         byte header = CreateHeader(isPost, isBinary, actionType);
@@ -53,7 +54,9 @@ public static class BinaryOperation {
 
         return (isPost, isBinary, actionType, payload);
     }
+    #endregion
 
+    #region Private Methods
     private static byte CreateHeader(bool isPost, bool isBinary, byte actionType) {
         byte header = 0;
         header |= (byte)((isPost ? 1 : 0) << 7);
@@ -61,4 +64,5 @@ public static class BinaryOperation {
         header |= actionType;
         return header;
     }
+    #endregion
 }

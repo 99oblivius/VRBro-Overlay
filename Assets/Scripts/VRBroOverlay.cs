@@ -1,17 +1,17 @@
 using UnityEngine;
 using UnityEngine.UI;
-using OVRUtil;
-using System.Collections;
-using System.Collections.Generic;
-using TMPro;
-using Valve.VR;
 using System;
-using Button = UnityEngine.UI.Button;
+using Valve.VR;
+using TMPro;
+using System.Collections;
 using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 [Serializable]
 public class OverlayTransform {
-    [Range(0, 0.5f)] public float size;
+    #region Properties
+    [Range(0, 0.5f)] 
+    public float size;
     
     [Header("Position")]
     [Range(-1f, 1f)] public float posX;
@@ -25,6 +25,7 @@ public class OverlayTransform {
 
     public Vector3 Position => new(posX, posY, posZ);
     public Quaternion Rotation => Quaternion.Euler(rotX, rotY, rotZ);
+    #endregion
 
     public OverlayTransform(float size, float x, float y, float z, int rotX, int rotY, int rotZ) {
         this.size = size;
@@ -94,9 +95,12 @@ public class VRBroOverlay : MonoBehaviour {
     private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
     private string logoPath;
     private List<Button> sceneButtons = new();
-    public string currentScene { get; private set; }
     private Coroutine animationCoroutine;
     private bool isAnimating;
+    #endregion
+
+    #region Public Properties
+    public string currentScene { get; private set; }
     public bool isMenuOpen { get; private set; }
     #endregion
 
@@ -116,7 +120,7 @@ public class VRBroOverlay : MonoBehaviour {
         }
         
         if (overlayHandle != 0) {
-            Overlay.Destroy(overlayHandle);
+            OVRUtil.Overlay.Destroy(overlayHandle);
         }
     }
     #endregion
@@ -124,7 +128,7 @@ public class VRBroOverlay : MonoBehaviour {
     #region Initialization
     private void InitializeOverlay() {
         logoPath = Application.streamingAssetsPath + "/Textures/VRBro_logo.png";
-        overlayHandle = Overlay.Create("VRBroOverlayKey", "VRBroOverlay");
+        overlayHandle = OVRUtil.Overlay.Create("VRBroOverlayKey", "VRBroOverlay");
         
         var error = OpenVR.Overlay.SetOverlayInputMethod(overlayHandle, VROverlayInputMethod.Mouse);
         if (error != EVROverlayError.None) {
@@ -132,7 +136,7 @@ public class VRBroOverlay : MonoBehaviour {
         }
         
         UpdateOverlayTransform(closedState);
-        Overlay.SetFromFile(overlayHandle, logoPath);
+        OVRUtil.Overlay.SetFromFile(overlayHandle, logoPath);
     }
 
     private void SetupInitialState() {
@@ -153,14 +157,14 @@ public class VRBroOverlay : MonoBehaviour {
         if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
             HandleVisibleOverlay(leftControllerIndex);
         } 
-        else if (Overlay.DashboardOverlayVisibility(overlayHandle)) {
-            Overlay.Hide(overlayHandle);
+        else if (OVRUtil.Overlay.DashboardOverlayVisibility(overlayHandle)) {
+            OVRUtil.Overlay.Hide(overlayHandle);
         }
     }
 
     private void HandleVisibleOverlay(uint leftControllerIndex) {
-        if (!Overlay.DashboardOverlayVisibility(overlayHandle)) {
-            Overlay.Show(overlayHandle);
+        if (!OVRUtil.Overlay.DashboardOverlayVisibility(overlayHandle)) {
+            OVRUtil.Overlay.Show(overlayHandle);
         }
 
         if (!isAnimating) {
@@ -175,7 +179,7 @@ public class VRBroOverlay : MonoBehaviour {
     private void UpdateOverlayTexture() {
         var bounds = new VRTextureBounds_t { uMin = 0, uMax = 1, vMin = 1, vMax = 0 };
         OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-        Overlay.SetRenderTexture(overlayHandle, overlayTexture);
+        OVRUtil.Overlay.SetRenderTexture(overlayHandle, overlayTexture);
     }
 
     private void UpdateOverlayTransform(OverlayTransform state) {
@@ -184,8 +188,8 @@ public class VRBroOverlay : MonoBehaviour {
         var leftControllerIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
             
         if (leftControllerIndex != OpenVR.k_unTrackedDeviceIndexInvalid) {
-            Overlay.SetSize(overlayHandle, state.size);
-            Overlay.SetTransformRelative(overlayHandle, leftControllerIndex, state.Position, state.Rotation);
+            OVRUtil.Overlay.SetSize(overlayHandle, state.size);
+            OVRUtil.Overlay.SetTransformRelative(overlayHandle, leftControllerIndex, state.Position, state.Rotation);
         }
     }
     #endregion
@@ -228,7 +232,7 @@ public class VRBroOverlay : MonoBehaviour {
         if (!opening) {
             var bounds = new VRTextureBounds_t { uMin = 0, uMax = 1, vMin = 0, vMax = 1 };
             OpenVR.Overlay.SetOverlayTextureBounds(overlayHandle, ref bounds);
-            Overlay.SetFromFile(overlayHandle, logoPath);
+            OVRUtil.Overlay.SetFromFile(overlayHandle, logoPath);
         }
         
         isAnimating = false;
@@ -257,7 +261,9 @@ public class VRBroOverlay : MonoBehaviour {
 
     private void ClearSceneButtons() {
         foreach (var button in sceneButtons) {
-            if (button != null) Destroy(button.gameObject);
+            if (button != null) {
+                Destroy(button.gameObject);
+            }
         }
         sceneButtons.Clear();
     }
@@ -270,6 +276,50 @@ public class VRBroOverlay : MonoBehaviour {
         }
     }
 
+    private void AddSceneButton(string sceneName) {
+        var buttonInstance = Instantiate(sceneButtonPrefab, sceneListScroll.content);
+        var buttonText = buttonInstance.GetComponentInChildren<TMP_Text>();
+        if (buttonText != null) {
+            buttonText.text = sceneName;
+            buttonText.fontStyle = sceneName == currentScene ? FontStyles.Bold : FontStyles.Normal;
+            buttonInstance.GetComponent<Image>().color = 
+                sceneName == currentScene ? SceneButton.ActiveColor : SceneButton.NormalColor;
+        }
+        buttonInstance.onClick.AddListener(() => SelectScene(sceneName));
+        sceneButtons.Add(buttonInstance);
+    }
+    
+    public async void SelectScene(string sceneName) {
+        if (vrBro._net == null) return;
+        
+        var result = await vrBro._net.SetScene(sceneName);
+        if (result >= 0) {
+            UpdateSelectedSceneUI(sceneName);
+        }
+        
+        ToggleMenu();
+    }
+
+    private void UpdateSelectedSceneUI(string sceneName) {
+        currentScene = sceneName;
+        foreach (var button in sceneButtons) {
+            if (button != null) {
+                var text = button.gameObject.GetComponentInChildren<TMP_Text>();
+                text.fontStyle = FontStyles.Normal;
+            }
+        }
+
+        var selectedButton = sceneButtons.Find(b => 
+            b.GetComponentInChildren<TMP_Text>().text == sceneName);
+        if (selectedButton != null) {
+            selectedButton.GetComponentInChildren<TMP_Text>().fontStyle = FontStyles.Underline;
+        }
+    }
+
+    private void UpdateSceneList() => PopulateSceneList();
+    #endregion
+
+    #region UI Scaling
     private void UpdateMenuScaling() {
         var contentTransform = sceneListScroll.content.GetComponent<RectTransform>();
         float buttonHeight = sceneButtonPrefab.gameObject.GetComponent<RectTransform>().rect.height;
@@ -298,45 +348,5 @@ public class VRBroOverlay : MonoBehaviour {
             sceneListScroll.GetComponent<RectTransform>().localPosition = new Vector3(0f, -3f, -2f);
         }
     }
-
-    private void AddSceneButton(string sceneName) {
-        var buttonInstance = Instantiate(sceneButtonPrefab, sceneListScroll.content);
-        var buttonText = buttonInstance.GetComponentInChildren<TMP_Text>();
-        if (buttonText != null) {
-            buttonText.text = sceneName;
-            buttonText.fontStyle = sceneName == currentScene ? FontStyles.Bold : FontStyles.Normal;
-            buttonInstance.GetComponent<Image>().color = sceneName == currentScene ? SceneButton.ActiveColor : SceneButton.NormalColor;
-        }
-        buttonInstance.onClick.AddListener(() => SelectScene(sceneName));
-        sceneButtons.Add(buttonInstance);
-    }
-    
-    public async void SelectScene(string sceneName) {
-        if (vrBro._net == null) return;
-        
-        var result = await vrBro._net.SetScene(sceneName);
-        if (result >= 0) {
-            UpdateSelectedSceneUI(sceneName);
-        }
-        
-        ToggleMenu();
-    }
-
-    private void UpdateSelectedSceneUI(string sceneName) {
-        currentScene = sceneName;
-        foreach (var button in sceneButtons) {
-            if (button != null) {
-                var text = button.gameObject.GetComponentInChildren<TMP_Text>();
-                text.fontStyle = FontStyles.Normal;
-            }
-        }
-        var selectedButton = sceneButtons.Find(b => 
-            b.GetComponentInChildren<TMP_Text>().text == sceneName);
-        if (selectedButton != null) {
-            selectedButton.GetComponentInChildren<TMP_Text>().fontStyle = FontStyles.Underline;
-        }
-    }
-
-    private void UpdateSceneList() => PopulateSceneList();
     #endregion
 }

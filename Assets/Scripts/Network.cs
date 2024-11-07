@@ -1,20 +1,19 @@
 using System;
-using UnityEngine;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
 
-
-public class Network
-{
-    public SemaphoreSlim _networkLock = new(1, 1);
+public class Network {
+    #region Fields
     private Client _client;
+    private SemaphoreSlim _networkLock = new(1, 1);
 
     public string serverAddr = "127.0.0.1";
     public int serverPort = 33390;
+    #endregion
 
     #region Connection Management
-
     private async Task Connect(string address, int port) {
         _client = new Client(address, port);
         await _client.ConnectAsync();
@@ -37,7 +36,7 @@ public class Network
     }
     #endregion
 
-    #region Packet Handling
+    #region Network Operations
     private async Task<(int, string)> SendPayloadRequest(ActionTypeRequest action) {
         var packet = CreatePacket(true, (byte)action);
         return await SendPacketWithPayload(packet);
@@ -63,8 +62,7 @@ public class Network
         if (_client == null || !_client.IsConnected()) {
             await Connect(serverAddr, serverPort);
         }
-        if (!_client.IsConnected())
-            return (-1, string.Empty);
+        if (!_client.IsConnected()) return (-1, string.Empty);
 
         try {
             await _networkLock.WaitAsync();
@@ -81,7 +79,7 @@ public class Network
             }
 
             return (status, payload);
-        } catch (Exception) {
+        } catch {
             return (-1, string.Empty);
         } finally {
             _networkLock.Release();
@@ -92,16 +90,13 @@ public class Network
         if (_client == null || !_client.IsConnected()) {
             await Connect(serverAddr, serverPort);
         }
-        if (!_client.IsConnected())
-            return -1;
+        if (!_client.IsConnected()) return -1;
 
         try {
             await _networkLock.WaitAsync();
             byte[] response = await _client.SendMessageWithResponse(packet);
-            if (response == null || response.Length == 0) return -1;
-            return ParseResponse(response);
-        }
-        catch (Exception) {
+            return response == null || response.Length == 0 ? -1 : ParseResponse(response);
+        } catch {
             return -1;
         } finally {
             _networkLock.Release();
@@ -109,8 +104,7 @@ public class Network
     }
 
     private static List<byte> CreatePacket(bool isRequest, byte action, string payload = "") {
-        var packet = new List<byte>
-        {
+        var packet = new List<byte> {
             (byte)((isRequest ? 0 : 1 << 7) | (action & 0x3F))
         };
 
@@ -129,24 +123,24 @@ public class Network
     #region Public API
     // Buffer Operations
     public async Task<int> IsReplayBufferActive() => await SendRequest(ActionTypeRequest.ReplayBufferActive);
-    public async Task<int> StartReplayBuffer()    => await SendEvent(ActionTypeEvent.StartReplayBuffer);
-    public async Task<int> StopReplayBuffer()     => await SendEvent(ActionTypeEvent.StopReplayBuffer);
-    public async Task<int> SaveBuffer()           => await SendEvent(ActionTypeEvent.SaveReplayBuffer);
+    public async Task<int> StartReplayBuffer() => await SendEvent(ActionTypeEvent.StartReplayBuffer);
+    public async Task<int> StopReplayBuffer() => await SendEvent(ActionTypeEvent.StopReplayBuffer);
+    public async Task<int> SaveBuffer() => await SendEvent(ActionTypeEvent.SaveReplayBuffer);
 
     // Recording Operations
-    public async Task<int> IsRecordingActive()    => await SendRequest(ActionTypeRequest.RecordingActive);
-    public async Task<int> StartRecording()       => await SendEvent(ActionTypeEvent.StartRecording);
-    public async Task<int> StopRecording()        => await SendEvent(ActionTypeEvent.StopRecording);
-    public async Task<int> SplitRecording()       => await SendEvent(ActionTypeEvent.RecordingSplitFile);
+    public async Task<int> IsRecordingActive() => await SendRequest(ActionTypeRequest.RecordingActive);
+    public async Task<int> StartRecording() => await SendEvent(ActionTypeEvent.StartRecording);
+    public async Task<int> StopRecording() => await SendEvent(ActionTypeEvent.StopRecording);
+    public async Task<int> SplitRecording() => await SendEvent(ActionTypeEvent.RecordingSplitFile);
 
     // Streaming Operations
-    public async Task<int> IsStreamingActive()    => await SendRequest(ActionTypeRequest.StreamingActive);
-    public async Task<int> StartStreaming()       => await SendEvent(ActionTypeEvent.StartStreaming);
-    public async Task<int> StopStreaming()        => await SendEvent(ActionTypeEvent.StopStreaming);
+    public async Task<int> IsStreamingActive() => await SendRequest(ActionTypeRequest.StreamingActive);
+    public async Task<int> StartStreaming() => await SendEvent(ActionTypeEvent.StartStreaming);
+    public async Task<int> StopStreaming() => await SendEvent(ActionTypeEvent.StopStreaming);
 
     // Scene Operations
     public async Task<(int, string)> GetCurrentScene() => await SendPayloadRequest(ActionTypeRequest.GetCurrentScene);
-    public async Task<(int, string)> GetScenes()       => await SendPayloadRequest(ActionTypeRequest.GetScenes);
-    public async Task<int> SetScene(string msg)        => await SendPayloadEvent(ActionTypeEvent.SetScene, msg);
+    public async Task<(int, string)> GetScenes() => await SendPayloadRequest(ActionTypeRequest.GetScenes);
+    public async Task<int> SetScene(string msg) => await SendPayloadEvent(ActionTypeEvent.SetScene, msg);
     #endregion
 }

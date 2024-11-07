@@ -3,37 +3,59 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public class UIController : MonoBehaviour {
+    #region Serialized Fields
     [SerializeField] private Controller streamingController;
 
     [SerializeField] private TextMeshProUGUI bufferStateText;
     [SerializeField] private Image bufferIndicator;
     [SerializeField] private Image recordingIndicator;
     [SerializeField] private Image streamingIndicator;
-    
+    #endregion
+
+    #region Constants
     private static readonly Color32 ActiveColor = new(116, 132, 117, 255);
     private static readonly Color32 InactiveColor = new(132, 117, 127, 255);
     private static readonly Color32 PendingColor = new(132, 132, 117, 255);
+    #endregion
 
+    #region State
     private bool bindingsEnabled = true;
-    
+    #endregion
+
+    #region Unity Lifecycle
     private void Awake() {
+        InitializeState();
+        SubscribeToEvents();
+    }
+
+    private void OnDestroy() {
+        UnsubscribeFromEvents();
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializeState() {
         bindingsEnabled = Settings.Instance.BindingsEnabled;
-        streamingController.OnStateChanged += HandleStateChanged;
-        streamingController.OnPendingStateChanged += HandlePendingStateChanged;
         
-        // Initialize UI states
         UpdateIndicatorState(StreamOperation.Buffer, streamingController.stateManager.BufferActive);
         UpdateIndicatorState(StreamOperation.Recording, streamingController.stateManager.RecordingActive);
         UpdateIndicatorState(StreamOperation.Streaming, streamingController.stateManager.StreamingActive);
     }
 
-    private void OnDestroy() {
+    private void SubscribeToEvents() {
+        streamingController.OnStateChanged += HandleStateChanged;
+        streamingController.OnPendingStateChanged += HandlePendingStateChanged;
+    }
+
+    private void UnsubscribeFromEvents() {
         if (streamingController != null) {
             streamingController.OnStateChanged -= HandleStateChanged;
             streamingController.OnPendingStateChanged -= HandlePendingStateChanged;
         }
     }
-    
+    #endregion
+
+    #region Event Handlers
     private void HandleStateChanged(StreamOperation operation, bool active) {
         UpdateIndicatorState(operation, active);
     }
@@ -48,12 +70,13 @@ public class UIController : MonoBehaviour {
             UpdateIndicatorState(operation, GetOperationState(operation));
         }
     }
+    #endregion
 
+    #region State Management
     private void UpdateIndicatorState(StreamOperation operation, bool active) {
         Image indicator = GetIndicatorForOperation(operation);
         if (indicator == null) return;
 
-        // Don't update if operation is pending
         if (streamingController.stateManager.IsOperationPending(operation.ToString())) {
             return;
         }
@@ -83,8 +106,9 @@ public class UIController : MonoBehaviour {
             _ => false
         };
     }
+    #endregion
 
-    // Input binding methods
+    #region Input Binding Methods
     public async void StartBuffer() {
         if (!bindingsEnabled) return;
         await streamingController.ToggleOperation(StreamOperation.Buffer, true);
@@ -124,8 +148,9 @@ public class UIController : MonoBehaviour {
         if (!bindingsEnabled) return;
         await streamingController.SplitRecording();
     }
+    #endregion
 
-    // Button click methods
+    #region Button Event Handlers
     public async void OnBufferButtonClick() {
         if (!bindingsEnabled) return;
         bool isActive = streamingController.stateManager.BufferActive;
@@ -149,4 +174,5 @@ public class UIController : MonoBehaviour {
         if (!bindingsEnabled) return;
         await streamingController.SplitRecording();
     }
+    #endregion
 }

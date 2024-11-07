@@ -10,21 +10,29 @@ public enum StreamOperation {
 }
 
 public class Controller : MonoBehaviour {
+    #region Fields
     [SerializeField] private VRBro vrBro;
     
-    public StateManager stateManager = new();
     private float pollInterval = 0.75f;
     private float lastPollTime;
     private readonly SemaphoreSlim operationLock = new(1, 1);
     private bool isPolling;
     private bool isConnected;
+    private const int debouncePeriod = 1000;
+    #endregion
+
+    #region Properties
     public bool IsConnected => isConnected;
-    private int debouncePeriod = 1000;
-    
+    public StateManager stateManager = new();
+    #endregion
+
+    #region Events
     public event Action<StreamOperation, bool> OnStateChanged;
     public event Action<StreamOperation, bool> OnPendingStateChanged;
     public event Action<bool> OnConnectionStateChanged;
+    #endregion
 
+    #region Unity Lifecycle
     private async void Start() {
         await PollStates();
     }
@@ -38,11 +46,13 @@ public class Controller : MonoBehaviour {
         }
     }
 
+    private void OnDestroy() => operationLock.Dispose();
+    #endregion
+
+    #region State Management
     private async Task PollStates() {
         try {
             isPolling = true;
-            
-            // Check connection first
             bool wasConnected = isConnected;
             var bufferResult = await vrBro._net.IsReplayBufferActive();
             isConnected = bufferResult >= 0;
@@ -51,7 +61,6 @@ public class Controller : MonoBehaviour {
                 OnConnectionStateChanged?.Invoke(isConnected);
             }
 
-            // Only continue polling states if connected
             if (isConnected) {
                 var recordingResult = await vrBro._net.IsRecordingActive();
                 var streamingResult = await vrBro._net.IsStreamingActive();
@@ -71,7 +80,25 @@ public class Controller : MonoBehaviour {
             isPolling = false;
         }
     }
-    
+
+    private void UpdateStateIfChanged(StreamOperation operation, bool newState) {
+        if (stateManager.IsOperationPending(operation.ToString())) return;
+        
+        bool currentState = operation switch {
+            StreamOperation.Buffer => stateManager.BufferActive,
+            StreamOperation.Recording => stateManager.RecordingActive,
+            StreamOperation.Streaming => stateManager.StreamingActive,
+            _ => throw new ArgumentException("Invalid operation")
+        };
+        
+        if (currentState != newState) {
+            stateManager.UpdateState(operation, newState);
+            OnStateChanged?.Invoke(operation, newState);
+        }
+    }
+    #endregion
+
+    #region Operation Control
     public async Task<bool> ToggleOperation(StreamOperation operation, bool targetState) {
         if (vrBro._net == null) return false;
 
@@ -115,7 +142,7 @@ public class Controller : MonoBehaviour {
             operationLock.Release();
         }
     }
-    
+
     public async Task<bool> SaveBuffer() {
         if (vrBro._net == null || !stateManager.BufferActive)
             return false;
@@ -165,22 +192,5 @@ public class Controller : MonoBehaviour {
             operationLock.Release();
         }
     }
-    
-    private void UpdateStateIfChanged(StreamOperation operation, bool newState) {
-        if (stateManager.IsOperationPending(operation.ToString())) return;
-        
-        bool currentState = operation switch {
-            StreamOperation.Buffer => stateManager.BufferActive,
-            StreamOperation.Recording => stateManager.RecordingActive,
-            StreamOperation.Streaming => stateManager.StreamingActive,
-            _ => throw new ArgumentException("Invalid operation")
-        };
-        
-        if (currentState != newState) {
-            stateManager.UpdateState(operation, newState);
-            OnStateChanged?.Invoke(operation, newState);
-        }
-    }
-    
-    private void OnDestroy() => operationLock.Dispose();
+    #endregion
 }

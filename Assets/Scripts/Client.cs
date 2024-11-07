@@ -1,33 +1,55 @@
 using System;
-using UnityEngine;
-using System.Net.Sockets;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
 
 public class Client
 {
+    #region Fields
     private readonly SemaphoreSlim _requestLock = new(1, 1);
-
-    private string _address;
-    private int _port;
+    private readonly string _address;
+    private readonly int _port;
     private TcpClient _client;
     private NetworkStream _stream;
+    #endregion
 
+    #region Lifecycle
     public Client(string address, int port) {
         _address = address;
         _port = port;
     }
 
+    ~Client() {
+        Close();
+    }
+    #endregion
+
+    #region Connection Management
     public async Task ConnectAsync() {
         _client = new TcpClient();
         try {
             await _client.ConnectAsync(_address, _port);
             _stream = _client.GetStream();
-        } catch (Exception) {}
+        } catch (Exception) { }
     }
 
+    public void Close() {
+        try {
+            _requestLock?.Dispose();
+            _stream?.Close();
+            _client?.Close();
+        } catch (Exception) { }
+    }
+
+    public bool IsConnected() {
+        return _client != null && _client.Connected;
+    }
+    #endregion
+
+    #region Network Operations
     public async Task<byte[]> SendMessageWithResponse(List<byte> packet) {
         if (_client == null || !_client.Connected) return null;
 
@@ -47,10 +69,8 @@ public class Client
         byte[] bMessage = packet.ToArray();
         try {
             await _stream.WriteAsync(bMessage, 0, bMessage.Length);
-            StringBuilder sb = new(packet.Count * 8);
-            foreach (byte b in packet) { sb.Append(Convert.ToString(b, 2).PadLeft(8, '0')); }
         }
-        catch (Exception) {}
+        catch (Exception) { }
     }
 
     private async Task<byte[]> ReceiveResponseWithTimeout() {
@@ -65,7 +85,6 @@ public class Client
                 int bytesRead;
 
                 do {
-                    // Check cancellation between reads
                     if (cts.Token.IsCancellationRequested) {
                         throw new OperationCanceledException();
                     }
@@ -84,20 +103,5 @@ public class Client
             return null;
         }
     }
-
-    public void Close() {
-        try {
-            _requestLock?.Dispose();
-            _stream?.Close();
-            _client?.Close();
-        } catch (Exception) {}
-    }
-
-    ~Client() {
-        Close();
-    }
-
-    public bool IsConnected() {
-        return _client != null && _client.Connected;
-    }
+    #endregion
 }

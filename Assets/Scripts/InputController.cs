@@ -1,9 +1,10 @@
 using System;
 using UnityEngine;
-using Valve.VR;
 using UnityEngine.Events;
+using Valve.VR;
 
 public class InputController : MonoBehaviour {
+    #region Unity Events
     public UnityEvent OnSaveBuffer;
     public UnityEvent OnStartBuffer;
     public UnityEvent OnStopBuffer;
@@ -13,19 +14,23 @@ public class InputController : MonoBehaviour {
     public UnityEvent OnStopStreaming;
     public UnityEvent OnSplitRecording;
     public UnityEvent OnToggleSceneMenu;
+    #endregion
 
+    #region Fields
     private bool bindingsEnabled = true;
-    private ulong actionSetHandle = 0;
-    private ulong toggleSceneMenuHandle = 0;
-    private ulong saveBufferHandle = 0;
-    private ulong startBufferHandle = 0;
-    private ulong stopBufferHandle = 0;
-    private ulong startRecordingHandle = 0;
-    private ulong stopRecordingHandle = 0;
-    private ulong startStreamingHandle = 0;
-    private ulong stopStreamingHandle = 0;
-    private ulong splitRecordingHandle = 0;
-    
+    private ulong actionSetHandle;
+    private ulong toggleSceneMenuHandle;
+    private ulong saveBufferHandle;
+    private ulong startBufferHandle;
+    private ulong stopBufferHandle;
+    private ulong startRecordingHandle;
+    private ulong stopRecordingHandle;
+    private ulong startStreamingHandle;
+    private ulong stopStreamingHandle;
+    private ulong splitRecordingHandle;
+    #endregion
+
+    #region Unity Lifecycle
     private void Start() {
         OVRUtil.System.Init();
         InitializeActions();
@@ -33,10 +38,26 @@ public class InputController : MonoBehaviour {
         Settings.Instance.OnSettingsChanged += OnSettingsChanged;
     }
 
+    private void Update() {
+        if (!bindingsEnabled) return;
+        
+        UpdateActionState();
+        CheckActions();
+    }
+
+    private void OnDestroy() {
+        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+        OVRUtil.System.Shutdown();
+    }
+    #endregion
+
+    #region Settings
     private void OnSettingsChanged() {
         bindingsEnabled = Settings.Instance.BindingsEnabled;
     }
+    #endregion
 
+    #region Action Management
     private void InitializeActions() {
         var error = OpenVR.Input.SetActionManifestPath(Application.streamingAssetsPath + "/SteamVR/actions.json");
         if (error != EVRInputError.None) {
@@ -63,15 +84,7 @@ public class InputController : MonoBehaviour {
         var error = OpenVR.Input.GetActionHandle(actionPath, ref handle);
         if (error != EVRInputError.None) {
             Debug.LogWarning($"Failed to get action {actionPath}: {error}");
-            return;
         }
-    }
-
-    private void Update() {
-        if (!bindingsEnabled) return;
-        
-        UpdateActionState();
-        CheckActions();
     }
 
     private void UpdateActionState() {
@@ -123,9 +136,5 @@ public class InputController : MonoBehaviour {
             action.Invoke();
         }
     }
-
-    private void OnDestroy() {
-        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
-        OVRUtil.System.Shutdown();
-    }
+    #endregion
 }

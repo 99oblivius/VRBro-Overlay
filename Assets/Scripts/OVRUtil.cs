@@ -1,10 +1,8 @@
 using UnityEngine;
 using Valve.VR;
 using System;
-using System.Runtime.InteropServices;
 
-namespace OVRUtil
-{
+namespace OVRUtil {
     public static class System {
         public static void Init() {
             if (OpenVR.System != null) return;
@@ -17,37 +15,28 @@ namespace OVRUtil
 
             SteamVR_Settings.instance.pauseGameWhenDashboardVisible = false;
         }
-
         
         public static void Shutdown() {
             if (OpenVR.System != null) OpenVR.Shutdown();
         }
     }
 
-    
     public static class Overlay {
+        #region Creation and Destruction
         public static ulong Create(string key, string name) {
             var handle = OpenVR.k_ulOverlayHandleInvalid;
             var error = OpenVR.Overlay.CreateOverlay(key, name, ref handle);
             if (error != EVROverlayError.None) {
-                #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-                #else
-                UnityEngine.Application.Quit();
-                #endif
-            } return handle;
+                ThrowOrQuit();
+            }
+            return handle;
         }
 
         public static (ulong, ulong) CreateDashboard(string key, string name) {
-            ulong dashboardHandle = 0;
-            ulong thumbnailHandle = 0;
+            ulong dashboardHandle = 0, thumbnailHandle = 0;
             var error = OpenVR.Overlay.CreateDashboardOverlay(key, name, ref dashboardHandle, ref thumbnailHandle);
             if (error != EVROverlayError.None) {
-                #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-                #else
-                UnityEngine.Application.Quit();
-                #endif
+                ThrowOrQuit();
             }
             return (dashboardHandle, thumbnailHandle);
         }
@@ -60,14 +49,9 @@ namespace OVRUtil
                 }
             }
         }
+        #endregion
 
-        public static void SetFromFile(ulong handle, string path) {
-            var error = OpenVR.Overlay.SetOverlayFromFile(handle, path);
-            if (error != EVROverlayError.None) {
-                throw new Exception("Drawing obs-icon failed: " + error);
-            }
-        }
-
+        #region Visibility and Content
         public static void Show(ulong handle) {
             var error = OpenVR.Overlay.ShowOverlay(handle);
             if (error != EVROverlayError.None) {
@@ -86,43 +70,10 @@ namespace OVRUtil
             return OpenVR.Overlay.IsActiveDashboardOverlay(handle);
         }
 
-        public static void SetSize(ulong handle, float size) {
-            var error = OpenVR.Overlay.SetOverlayWidthInMeters(handle, size);
+        public static void SetFromFile(ulong handle, string path) {
+            var error = OpenVR.Overlay.SetOverlayFromFile(handle, path);
             if (error != EVROverlayError.None) {
-                throw new Exception("Failed to set overlay size: " + error);
-            }
-        }
-
-        public static void SetTransformAbsolute(ulong handle, Vector3 position, Quaternion rotation) {
-            var rigidTransform = new SteamVR_Utils.RigidTransform(position, rotation);
-            var matrix = rigidTransform.ToHmdMatrix34();
-            var error = OpenVR.Overlay.SetOverlayTransformAbsolute(
-                handle, ETrackingUniverseOrigin.TrackingUniverseStanding, ref matrix);
-            if (error != EVROverlayError.None) {
-                throw new Exception("Failed to set overlay position: " + error);
-            }
-        }
-
-        public static void SetTransformRelative(ulong handle, uint deviceIndex, Vector3 position, Quaternion rotation) {
-            var rigidTransform = new SteamVR_Utils.RigidTransform(position, rotation);
-            var matrix = rigidTransform.ToHmdMatrix34();
-            var error = OpenVR.Overlay.SetOverlayTransformTrackedDeviceRelative(handle, deviceIndex, ref matrix);
-            if (error != EVROverlayError.None) {
-                throw new Exception("Failed to set overlay position: " + error);
-            }
-        }
-
-        public static void FlipVertical(ulong handle) {
-            var bounds = new VRTextureBounds_t {
-                uMin = 0,
-                uMax = 1,
-                vMin = 1,
-                vMax = 0
-            };
-
-            var error = OpenVR.Overlay.SetOverlayTextureBounds(handle, ref bounds);
-            if (error != EVROverlayError.None) {
-                throw new Exception("Failed to flip texture: " + error);
+                throw new Exception("Drawing obs-icon failed: " + error);
             }
         }
 
@@ -141,8 +92,53 @@ namespace OVRUtil
             }
         }
 
+        public static void FlipVertical(ulong handle) {
+            var bounds = new VRTextureBounds_t {
+                uMin = 0,
+                uMax = 1,
+                vMin = 1,
+                vMax = 0
+            };
+
+            var error = OpenVR.Overlay.SetOverlayTextureBounds(handle, ref bounds);
+            if (error != EVROverlayError.None) {
+                throw new Exception("Failed to flip texture: " + error);
+            }
+        }
+        #endregion
+
+        #region Transform and Input
+        public static void SetSize(ulong handle, float size) {
+            var error = OpenVR.Overlay.SetOverlayWidthInMeters(handle, size);
+            if (error != EVROverlayError.None) {
+                throw new Exception("Failed to set overlay size: " + error);
+            }
+        }
+
+        public static void SetTransformAbsolute(ulong handle, Vector3 position, Quaternion rotation) {
+            var rigidTransform = new SteamVR_Utils.RigidTransform(position, rotation);
+            var matrix = rigidTransform.ToHmdMatrix34();
+            var error = OpenVR.Overlay.SetOverlayTransformAbsolute(
+                handle, 
+                ETrackingUniverseOrigin.TrackingUniverseStanding, 
+                ref matrix
+            );
+            if (error != EVROverlayError.None) {
+                throw new Exception("Failed to set overlay position: " + error);
+            }
+        }
+
+        public static void SetTransformRelative(ulong handle, uint deviceIndex, Vector3 position, Quaternion rotation) {
+            var rigidTransform = new SteamVR_Utils.RigidTransform(position, rotation);
+            var matrix = rigidTransform.ToHmdMatrix34();
+            var error = OpenVR.Overlay.SetOverlayTransformTrackedDeviceRelative(handle, deviceIndex, ref matrix);
+            if (error != EVROverlayError.None) {
+                throw new Exception("Failed to set overlay position: " + error);
+            }
+        }
+
         public static void SetMouseScale(ulong handle, int x, int y) {
-            var pvecMouseScale = new HmdVector2_t() {
+            var pvecMouseScale = new HmdVector2_t {
                 v0 = x,
                 v1 = y
             };
@@ -151,6 +147,14 @@ namespace OVRUtil
                 throw new Exception("Failed to set mouse scaling factor: " + error);
             }
         }
+        #endregion
+
+        private static void ThrowOrQuit() {
+            #if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+            #else
+            UnityEngine.Application.Quit();
+            #endif
+        }
     }
 }
-

@@ -1,6 +1,6 @@
 using System;
-using UnityEngine;
 using System.IO;
+using UnityEngine;
 
 [Serializable]
 public class NetworkSettings {
@@ -18,22 +18,30 @@ public class UISettings {
 }
 
 public class Settings {
+    #region Constants
+    private const string NetworkSettingsFile = "Config/network_settings.json";
+    private const string UISettingsFile = "Config/ui_settings.json";
+    #endregion
+
+    #region Fields
     private static Settings instance;
+    private NetworkSettings networkSettings;
+    private UISettings uiSettings;
+    private static string NetworkSettingsPath => Path.Combine(Application.persistentDataPath, NetworkSettingsFile);
+    private static string UISettingsPath => Path.Combine(Application.persistentDataPath, UISettingsFile);
+    #endregion
+
+    #region Events
+    public event Action OnSettingsChanged;
+    #endregion
+
+    #region Properties
     public static Settings Instance {
         get {
             instance ??= Load();
             return instance;
         }
     }
-
-    private const string NetworkSettingsFile = "Config/network_settings.json";
-    private const string UISettingsFile = "Config/ui_settings.json";
-    private static string NetworkSettingsPath => Path.Combine(Application.persistentDataPath, NetworkSettingsFile);
-    private static string UISettingsPath => Path.Combine(Application.persistentDataPath, UISettingsFile);
-    private NetworkSettings networkSettings;
-    private UISettings uiSettings;
-
-    public event Action OnSettingsChanged;
 
     public string ServerAddress { 
         get => networkSettings.ServerAddress;
@@ -67,7 +75,9 @@ public class Settings {
             }
         }
     }
+    #endregion
 
+    #region Initialization
     private Settings() {
         networkSettings = new NetworkSettings();
         uiSettings = new UISettings();
@@ -75,18 +85,21 @@ public class Settings {
 
     private static Settings Load() {
         var settings = new Settings();
-
         try {
             if (File.Exists(NetworkSettingsPath)) {
                 string json = File.ReadAllText(NetworkSettingsPath);
                 var loadedNetworkSettings = JsonUtility.FromJson<NetworkSettings>(json);
-                if (loadedNetworkSettings != null) settings.networkSettings = loadedNetworkSettings;
+                if (loadedNetworkSettings != null) {
+                    settings.networkSettings = loadedNetworkSettings;
+                }
             }
 
             if (File.Exists(UISettingsPath)) {
                 string json = File.ReadAllText(UISettingsPath);
                 var loadedUISettings = JsonUtility.FromJson<UISettings>(json);
-                if (loadedUISettings != null) settings.uiSettings = loadedUISettings;
+                if (loadedUISettings != null) {
+                    settings.uiSettings = loadedUISettings;
+                }
             }
         } catch (Exception ex) {
             Debug.LogError($"Failed to load settings: {ex.Message}");
@@ -94,11 +107,15 @@ public class Settings {
 
         return settings;
     }
+    #endregion
 
+    #region File Operations
     private void Save() {
         try {
             string configDir = Path.GetDirectoryName(NetworkSettingsPath);
-            if (!Directory.Exists(configDir)) Directory.CreateDirectory(configDir);
+            if (!Directory.Exists(configDir)) {
+                Directory.CreateDirectory(configDir);
+            }
 
             string networkJson = JsonUtility.ToJson(networkSettings, true);
             File.WriteAllText(NetworkSettingsPath, networkJson);
@@ -109,4 +126,5 @@ public class Settings {
             Debug.LogError($"Failed to save settings: {ex.Message}");
         }
     }
+    #endregion
 }

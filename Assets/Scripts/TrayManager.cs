@@ -5,12 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using UnityEngine;
+
+using Application = System.Windows.Forms.Application;
 using Color = System.Drawing.Color;
+using Font = System.Drawing.Font;
 
 public class TrayManager : MonoBehaviour {
+    #region Serialized Fields
     [SerializeField] private VRBro vrBro;
     [SerializeField] private Controller streamingController;
+    #endregion
 
+    #region Private Fields
     private readonly CancellationTokenSource cts = new();
     private NotifyIcon trayIcon;
     private CustomContextMenuStrip trayMenu;
@@ -18,10 +24,14 @@ public class TrayManager : MonoBehaviour {
     private SynchronizationContext mainThread;
     private Thread trayThread;
     private bool isRunning = true;
+    #endregion
 
+    #region Properties
     private string CurrentAddress => Settings.Instance.ServerAddress;
     private int CurrentPort => Settings.Instance.ServerPort;
+    #endregion
 
+    #region Unity Lifecycle
     private void Awake() {
         mainThread = SynchronizationContext.Current;
         Settings.Instance.OnSettingsChanged += OnSettingsChanged;
@@ -30,35 +40,18 @@ public class TrayManager : MonoBehaviour {
     }
 
     private void OnDestroy() {
-        isRunning = false;
-        cts.Cancel();
-        cts.Dispose();
-        trayIcon?.Dispose();
-        settingsForm?.Dispose();
-        trayThread?.Join(100);
-        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
-        streamingController.OnConnectionStateChanged -= HandleConnectionStateChanged;
+        Cleanup();
     }
+    #endregion
 
-    private void HandleConnectionStateChanged(bool isConnected) {
-        if (trayIcon == null) return;
-        trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Disconnected";
-    }
-
-    private void OnSettingsChanged() {
-        if (vrBro?._net != null) {
-            vrBro._net.serverAddr = Settings.Instance.ServerAddress;
-            vrBro._net.serverPort = Settings.Instance.ServerPort;
-        }
-    }
-
+    #region Initialization
     private void InitializeTrayIcon() {
-        if (!System.Windows.Forms.Application.MessageLoop) {
+        if (!Application.MessageLoop) {
             trayThread = new Thread(() => {
-                System.Windows.Forms.Application.EnableVisualStyles();
-                System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
                 CreateTrayIcon();
-                while (isRunning) System.Windows.Forms.Application.DoEvents();
+                while (isRunning) Application.DoEvents();
             });
             trayThread.SetApartmentState(ApartmentState.STA);
             trayThread.IsBackground = true;
@@ -99,6 +92,20 @@ public class TrayManager : MonoBehaviour {
             trayIcon.Icon = SystemIcons.Application;
         }
     }
+    #endregion
+
+    #region Event Handlers
+    private void HandleConnectionStateChanged(bool isConnected) {
+        if (trayIcon == null) return;
+        trayIcon.Text = isConnected ? "VRBro - Connected" : "VRBro - Disconnected";
+    }
+
+    private void OnSettingsChanged() {
+        if (vrBro?._net != null) {
+            vrBro._net.serverAddr = Settings.Instance.ServerAddress;
+            vrBro._net.serverPort = Settings.Instance.ServerPort;
+        }
+    }
 
     private void OnOpenSettings(object sender, EventArgs e) {
         try {
@@ -119,11 +126,24 @@ public class TrayManager : MonoBehaviour {
         }
     }
 
+    private void OnQuit(object sender, EventArgs e) {
+        ExecuteOnMainThread(() => {
+            isRunning = false;
+            cts.Cancel();
+            #if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+            #else
+            Application.Quit();
+            #endif
+        });
+    }
+    #endregion
+
+    #region Connection Management
     private async Task<bool> OnSaveConnection(string address, int port) {
         if (vrBro?._net == null) return false;
 
         try {
-            
             string originalAddress = vrBro._net.serverAddr;
             int originalPort = vrBro._net.serverPort;
 
@@ -132,7 +152,6 @@ public class TrayManager : MonoBehaviour {
             vrBro._net.Close();
 
             var isConnected = await vrBro._net.CheckConnected();
-
             if (!isConnected) {
                 vrBro._net.serverAddr = originalAddress;
                 vrBro._net.serverPort = originalPort;
@@ -144,25 +163,28 @@ public class TrayManager : MonoBehaviour {
             return false;
         }
     }
+    #endregion
 
-    private void OnQuit(object sender, EventArgs e) {
-        ExecuteOnMainThread(() => {
-            isRunning = false;
-            cts.Cancel();
-            #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-            #else
-            UnityEngine.Application.Quit();
-            #endif
-        });
-    }
-
+    #region Utility Methods
     private void ExecuteOnMainThread(Action action) {
         mainThread?.Post(_ => action(), null);
     }
+
+    private void Cleanup() {
+        isRunning = false;
+        cts.Cancel();
+        cts.Dispose();
+        trayIcon?.Dispose();
+        settingsForm?.Dispose();
+        trayThread?.Join(100);
+        Settings.Instance.OnSettingsChanged -= OnSettingsChanged;
+        streamingController.OnConnectionStateChanged -= HandleConnectionStateChanged;
+    }
+    #endregion
 }
 
 public class CustomContextMenuStrip : ContextMenuStrip {
+    #region Constants
     private static readonly Color MenuBackColor = ColorTranslator.FromHtml("#181819");
     private static readonly Color MenuForeColor = Color.White;
     private static readonly Color ItemHoverColor = ColorTranslator.FromHtml("#2A3A75");
@@ -170,8 +192,10 @@ public class CustomContextMenuStrip : ContextMenuStrip {
     private static readonly Color SeparatorColor = ColorTranslator.FromHtml("#28282A");
     private const int MenuItemPadding = 5;
     private const int MenuCornerRadius = 4;
-    private static readonly System.Drawing.Font MenuItemFont = new("Segoe UI", 9F);
+    private static readonly Font MenuItemFont = new("Segoe UI", 9F);
+    #endregion
 
+    #region Initialization
     public CustomContextMenuStrip() {
         InitializeMenuStyle();
         Opening += OnMenuOpening;
@@ -185,7 +209,9 @@ public class CustomContextMenuStrip : ContextMenuStrip {
         Padding = new Padding(6);
         Font = MenuItemFont;
     }
+    #endregion
 
+    #region Event Handlers
     private void OnMenuOpening(object sender, System.ComponentModel.CancelEventArgs e) {
         foreach (ToolStripItem item in Items) {
             if (item is ToolStripMenuItem menuItem) {
@@ -196,18 +222,29 @@ public class CustomContextMenuStrip : ContextMenuStrip {
             }
         }
     }
+    #endregion
 
+    #region Cleanup
     protected override void Dispose(bool disposing) {
-        if (disposing) MenuItemFont?.Dispose();
+        if (disposing) {
+            MenuItemFont?.Dispose();
+        }
         base.Dispose(disposing);
     }
+    #endregion
 
+    #region Custom Renderer
     private class CustomContextMenuRenderer : ToolStripProfessionalRenderer {
         public CustomContextMenuRenderer() : base(new CustomColorTable()) { }
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e) {
-            using var path = CreateRoundedRectanglePath(e.AffectedBounds.X, e.AffectedBounds.Y, 
-                e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1, MenuCornerRadius);
+            using var path = CreateRoundedRectanglePath(
+                e.AffectedBounds.X, 
+                e.AffectedBounds.Y, 
+                e.AffectedBounds.Width - 1, 
+                e.AffectedBounds.Height - 1, 
+                MenuCornerRadius
+            );
             using var pen = new Pen(SeparatorColor);
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             e.Graphics.DrawPath(pen, path);
@@ -222,18 +259,17 @@ public class CustomContextMenuStrip : ContextMenuStrip {
 
             using var brush = new SolidBrush(GetItemBackgroundColor(menuItem));
             if (menuItem.Selected || menuItem.Pressed) {
-                using var path = CreateRoundedRectanglePath(bounds.X + 1, bounds.Y, 
-                    bounds.Width - 2, bounds.Height, MenuCornerRadius - 2);
+                using var path = CreateRoundedRectanglePath(
+                    bounds.X + 1, 
+                    bounds.Y, 
+                    bounds.Width - 2, 
+                    bounds.Height, 
+                    MenuCornerRadius - 2
+                );
                 g.FillPath(brush, path);
             } else {
                 g.FillRectangle(brush, bounds);
             }
-        }
-
-        private Color GetItemBackgroundColor(ToolStripMenuItem menuItem) {
-            if (menuItem.Pressed) return ItemPressColor;
-            if (menuItem.Selected) return ItemHoverColor;
-            return MenuBackColor;
         }
 
         protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e) {
@@ -242,6 +278,12 @@ public class CustomContextMenuStrip : ContextMenuStrip {
             var y = bounds.Height / 2;
             using var pen = new Pen(SeparatorColor);
             g.DrawLine(pen, bounds.Left + MenuItemPadding, y, bounds.Right - MenuItemPadding, y);
+        }
+
+        private Color GetItemBackgroundColor(ToolStripMenuItem menuItem) {
+            if (menuItem.Pressed) return ItemPressColor;
+            if (menuItem.Selected) return ItemHoverColor;
+            return MenuBackColor;
         }
 
         private static System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(
@@ -269,9 +311,11 @@ public class CustomContextMenuStrip : ContextMenuStrip {
         public override Color ImageMarginGradientMiddle => MenuBackColor;
         public override Color ImageMarginGradientEnd => MenuBackColor;
     }
+    #endregion
 }
 
 public class NetworkSettingsForm : Form {
+    #region Fields
     private readonly TextBox ipAddressBox;
     private readonly NumericUpDown portNumeric;
     private readonly RoundedButton saveButton;
@@ -279,7 +323,9 @@ public class NetworkSettingsForm : Form {
     private readonly SemaphoreSlim connectionLock = new(1, 1);
     private readonly Func<string, int, Task<bool>> onConnectionAttempt;
     private bool isConnecting;
+    #endregion
 
+    #region Constructor
     public NetworkSettingsForm(string currentAddress, int currentPort, Func<string, int, Task<bool>> onConnectionAttempt) {
         this.onConnectionAttempt = onConnectionAttempt;
         InitializeFormStyle();
@@ -298,7 +344,9 @@ public class NetworkSettingsForm : Form {
             saveButton, cancelButton 
         });
     }
+    #endregion
 
+    #region Initialization
     private void InitializeFormStyle() {
         BackColor = ColorTranslator.FromHtml("#181819");
         ForeColor = Color.White;
@@ -386,7 +434,9 @@ public class NetworkSettingsForm : Form {
         button.Click += (s, e) => Close();
         return button;
     }
+    #endregion
 
+    #region Public Methods
     public void UpdateCurrentValues(string address, int port) {
         if (InvokeRequired) {
             Invoke(new Action(() => UpdateCurrentValues(address, port)));
@@ -395,10 +445,11 @@ public class NetworkSettingsForm : Form {
         ipAddressBox.Text = address;
         portNumeric.Value = port;
     }
+    #endregion
 
+    #region Connection Management
     private async Task AttemptConnection() {
-        if (!ValidateInput()) return;
-        if (isConnecting) return;
+        if (!ValidateInput() || isConnecting) return;
         
         try {
             isConnecting = true;
@@ -433,7 +484,9 @@ public class NetworkSettingsForm : Form {
 
         return true;
     }
+    #endregion
 
+    #region UI Helpers
     private void ShowCustomError(string message) {
         using var customError = new Form {
             Text = "Connection Error",
@@ -493,7 +546,9 @@ public class NetworkSettingsForm : Form {
         ipAddressBox.Enabled = enabled;
         portNumeric.Enabled = enabled;
     }
+    #endregion
 
+    #region Cleanup
     protected override void Dispose(bool disposing) {
         if (disposing) {
             connectionLock?.Dispose();
@@ -504,36 +559,20 @@ public class NetworkSettingsForm : Form {
         }
         base.Dispose(disposing);
     }
+    #endregion
 }
 
 public class RoundedButton : Button {
+    #region Fields
     private const int Radius = 4;
     private Color normalColor;
     private Color hoverColor;
     private Color pressColor;
     private bool isHovering;
     private bool isPressed;
+    #endregion
 
-    public RoundedButton() {
-        InitializeStyle();
-        SetupEventHandlers();
-    }
-
-    private void InitializeStyle() {
-        FlatStyle = FlatStyle.Flat;
-        FlatAppearance.BorderSize = 0;
-        FlatAppearance.MouseOverBackColor = Color.Transparent;
-        FlatAppearance.MouseDownBackColor = Color.Transparent;
-        // UpdateRegion();
-    }
-
-    private void SetupEventHandlers() {
-        MouseEnter += (s, e) => { isHovering = true; UpdateButtonColor(); };
-        MouseLeave += (s, e) => { isHovering = false; isPressed = false; UpdateButtonColor(); };
-        MouseDown += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = true; UpdateButtonColor(); } };
-        MouseUp += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = false; UpdateButtonColor(); } };
-    }
-
+    #region Properties
     public Color HoverColor {
         get => hoverColor;
         set { hoverColor = value; UpdateButtonColor(); }
@@ -548,37 +587,34 @@ public class RoundedButton : Button {
         get => base.BackColor;
         set { normalColor = value; UpdateButtonColor(); }
     }
-    
+    #endregion
+
+    #region Initialization
+    public RoundedButton() {
+        InitializeStyle();
+        SetupEventHandlers();
+    }
+
+    private void InitializeStyle() {
+        FlatStyle = FlatStyle.Flat;
+        FlatAppearance.BorderSize = 0;
+        FlatAppearance.MouseOverBackColor = Color.Transparent;
+        FlatAppearance.MouseDownBackColor = Color.Transparent;
+    }
+
+    private void SetupEventHandlers() {
+        MouseEnter += (s, e) => { isHovering = true; UpdateButtonColor(); };
+        MouseLeave += (s, e) => { isHovering = false; isPressed = false; UpdateButtonColor(); };
+        MouseDown += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = true; UpdateButtonColor(); } };
+        MouseUp += (s, e) => { if (e.Button == MouseButtons.Left) { isPressed = false; UpdateButtonColor(); } };
+    }
+    #endregion
+
+    #region Color Management
     private void UpdateButtonColor() {
         base.BackColor = isPressed && !pressColor.IsEmpty ? pressColor :
                         isHovering && !hoverColor.IsEmpty ? hoverColor :
                         normalColor;
     }
-
-    [System.Runtime.InteropServices.DllImport("Gdi32.dll")]
-    private static extern IntPtr CreateRoundRectRgn(
-        int nLeftRect, int nTopRect, 
-        int nRightRect, int nBottomRect, 
-        int nWidthEllipse, int nHeightEllipse
-    );
-}
-
-public static class GraphicsExtensions {
-    public static void DrawRoundedRectangle(
-        this System.Drawing.Graphics graphics, 
-        Pen pen, 
-        float x, 
-        float y, 
-        float width, 
-        float height, 
-        float radius
-    ) {
-        using var path = new System.Drawing.Drawing2D.GraphicsPath();
-        path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
-        path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
-        path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
-        path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
-        path.CloseFigure();
-        graphics.DrawPath(pen, path);
-    }
+    #endregion
 }

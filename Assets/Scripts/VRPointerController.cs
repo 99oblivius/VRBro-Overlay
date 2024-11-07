@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
-using Valve.VR;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
+using Valve.VR;
 using TMPro;
 
 public class VRPointerController : MonoBehaviour {
+    #region Serialized Fields
     [Header("References")]
     [SerializeField] private VRBroOverlay overlay;
     [SerializeField] private Canvas targetCanvas;
@@ -22,37 +23,60 @@ public class VRPointerController : MonoBehaviour {
     
     [Header("Haptic Feedback")]
     [SerializeField] private float hapticPulseStrength = 0.3f;
+    #endregion
 
+    #region Private Fields
     private Camera overlayCamera;
     private GameObject lastHoveredObject;
     private TrackedDevicePose_t[] poses = new TrackedDevicePose_t[OpenVR.k_unMaxTrackedDeviceCount];
     private ulong actionSetHandle;
     private ulong interactActionHandle;
 
-    // Drag tracking
     private bool isDragging;
     private bool exceededThreshold;
     private Vector2 dragStartPosition;
     private GameObject dragStartObject;
     private ScrollRect activeScrollRect;
     private GameObject lastHoveredForHaptics;
+    #endregion
 
+    #region Unity Lifecycle
     private void Start() {
-        if (!graphicRaycaster) graphicRaycaster = targetCanvas.GetComponent<GraphicRaycaster>();
-        if (!eventSystem) eventSystem = EventSystem.current;
+        InitializeComponents();
+        InitializeVRActions();
+    }
+
+    private void Update() {
+        if (!overlay.isMenuOpen) {
+            if (cursor && cursor.gameObject.activeSelf) {
+                cursor.gameObject.SetActive(false);
+            }
+            return;
+        }
+
+        UpdateActionSet();
+        HandlePointerInteraction();
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializeComponents() {
+        if (!graphicRaycaster) {
+            graphicRaycaster = targetCanvas.GetComponent<GraphicRaycaster>();
+        }
+        if (!eventSystem) {
+            eventSystem = EventSystem.current;
+        }
         overlayCamera = targetCanvas.worldCamera;
         
         if (cursor) {
             cursor.gameObject.SetActive(false);
-            Vector3 cursorPos = cursor.localPosition;
-            cursorPos.z = cursorZOffset;
-            cursor.localPosition = cursorPos;
+            Vector3 cursorPos = cursor.position;
+            cursor.position = new Vector3(cursorPos.x, cursorPos.y, cursorZOffset);
         }
-
-        InitializeActions();
     }
 
-    private void InitializeActions() {
+    private void InitializeVRActions() {
         var error = OpenVR.Input.GetActionSetHandle("/actions/VRBro", ref actionSetHandle);
         if (error != EVRInputError.None) {
             Debug.LogError($"Failed to get action set handle: {error}");
@@ -62,21 +86,11 @@ public class VRPointerController : MonoBehaviour {
         error = OpenVR.Input.GetActionHandle("/actions/VRBro/in/InteractUI", ref interactActionHandle);
         if (error != EVRInputError.None) {
             Debug.LogError($"Failed to get action handle: {error}");
-            return;
         }
     }
+    #endregion
 
-    private void Update() {
-        if (!overlay.isMenuOpen) {
-            if (cursor && cursor.gameObject.activeSelf)
-                cursor.gameObject.SetActive(false);
-            return;
-        }
-
-        UpdateActionSet();
-        HandlePointerInteraction();
-    }
-
+    #region Input Management
     private void UpdateActionSet() {
         if (actionSetHandle == 0) return;
 
@@ -91,6 +105,22 @@ public class VRPointerController : MonoBehaviour {
         );
     }
 
+    private bool GetTriggerState() {
+        if (interactActionHandle == 0) return false;
+
+        var actionData = new InputDigitalActionData_t();
+        var error = OpenVR.Input.GetDigitalActionData(
+            interactActionHandle,
+            ref actionData,
+            (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(InputDigitalActionData_t)),
+            OpenVR.k_ulInvalidInputValueHandle
+        );
+
+        return error == EVRInputError.None && actionData.bState && actionData.bChanged;
+    }
+    #endregion
+
+    #region Transform Calculation
     private (Vector3 position, Quaternion rotation, Vector2 dimensions) GetOverlayTransform() {
         var leftIndex = OpenVR.System.GetTrackedDeviceIndexForControllerRole(ETrackedControllerRole.LeftHand);
         if (leftIndex == OpenVR.k_unTrackedDeviceIndexInvalid) return default;
@@ -116,21 +146,9 @@ public class VRPointerController : MonoBehaviour {
 
         return (worldPosition, worldRotation, dimensions);
     }
+    #endregion
 
-    private bool GetTriggerState() {
-        if (interactActionHandle == 0) return false;
-
-        var actionData = new InputDigitalActionData_t();
-        var error = OpenVR.Input.GetDigitalActionData(
-            interactActionHandle,
-            ref actionData,
-            (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(InputDigitalActionData_t)),
-            OpenVR.k_ulInvalidInputValueHandle
-        );
-
-        return error == EVRInputError.None && actionData.bState && actionData.bChanged;
-    }
-
+    #region Pointer Interaction
     private void HandlePointerInteraction() {
         var (planePosition, planeRotation, planeDimensions) = GetOverlayTransform();
         var planeNormal = planeRotation * Vector3.forward;
@@ -151,16 +169,18 @@ public class VRPointerController : MonoBehaviour {
         if (t < 0) return;
 
         Vector3 hitPoint = rayOrigin + rayDirection * t;
-        
+        var localHit = hitPoint - planePosition;
         var right = planeRotation * Vector3.right;
         var up = planeRotation * Vector3.up;
         
-        var localHit = hitPoint - planePosition;
         float u = Vector3.Dot(localHit, right) / planeDimensions.x + 0.5f;
         float v = Vector3.Dot(localHit, up) / planeDimensions.y + 0.5f;
 
         if (u < 0 || u > 1 || v < 0 || v > 1) {
             if (cursor) cursor.gameObject.SetActive(false);
+            if (!isDragging) {
+                HandleHoverStateChange(null);
+            }
             return;
         }
 
@@ -169,10 +189,7 @@ public class VRPointerController : MonoBehaviour {
             v * overlayCamera.pixelHeight
         );
 
-        var pointerData = new PointerEventData(eventSystem) {
-            position = screenPos
-        };
-
+        var pointerData = new PointerEventData(eventSystem) { position = screenPos };
         var results = new List<RaycastResult>();
         graphicRaycaster.Raycast(pointerData, results);
         bool isOverUI = results.Count > 0;
@@ -205,7 +222,6 @@ public class VRPointerController : MonoBehaviour {
     private void HandleDragAndClick(RaycastResult hit, Vector2 currentPos) {
         var triggerState = GetTriggerState();
         
-        // Start drag
         if (triggerState && !isDragging) {
             isDragging = true;
             exceededThreshold = false;
@@ -217,7 +233,6 @@ public class VRPointerController : MonoBehaviour {
                 activeScrollRect = eventModule.GetComponent<Canvas>()?.GetComponentInChildren<ScrollRect>();
             }
         }
-        // End drag/click
         else if (!triggerState && isDragging) {
             if (!exceededThreshold && hit.gameObject == dragStartObject) {
                 var button = dragStartObject.GetComponent<Button>();
@@ -231,7 +246,6 @@ public class VRPointerController : MonoBehaviour {
             activeScrollRect = null;
             dragStartObject = null;
         }
-        // Handle scrolling during drag
         else if (isDragging && activeScrollRect != null) {
             var delta = currentPos - dragStartPosition;
             
@@ -257,30 +271,29 @@ public class VRPointerController : MonoBehaviour {
         float offsetY = 5f;
         float endY = sceneList.sizeDelta.y - scrollbar.sizeDelta.y - offsetY;
 
-        float normalizedDisplacement = Mathf.Clamp01(content.localPosition.y / (content.sizeDelta.y - sceneList.sizeDelta.y));
+        float normalizedDisplacement = Mathf.Clamp01(
+            content.localPosition.y / (content.sizeDelta.y - sceneList.sizeDelta.y)
+        );
 
         float scrollPosition = Mathf.Lerp(offsetY, endY, normalizedDisplacement);
         scrollbar.anchoredPosition = new Vector3(92f, -scrollPosition, -3f);
     }
+    #endregion
 
+    #region State Management
     private void HandleHoverStateChange(GameObject newHoverObject) {
-        // Exit state handling
         if (lastHoveredObject != null) {
             var button = lastHoveredObject.GetComponent<Button>();
             if (button != null) {
                 button.OnPointerExit(null);
                 
-                // Check if this is the current scene button
                 var buttonText = button.GetComponentInChildren<TMP_Text>();
-                bool isCurrentScene = buttonText != null && 
-                                    buttonText.text == overlay.currentScene;
-                
-                // Only reset to normal color if it's not the current scene
-                button.GetComponent<Image>().color = isCurrentScene ? SceneButton.ActiveColor : SceneButton.NormalColor;
+                bool isCurrentScene = buttonText != null && buttonText.text == overlay.currentScene;
+                button.GetComponent<Image>().color = isCurrentScene ? 
+                    SceneButton.ActiveColor : SceneButton.NormalColor;
             }
         }
 
-        // Enter state handling
         if (newHoverObject != null) {
             var button = newHoverObject.GetComponent<Button>();
             if (button != null) {
@@ -289,7 +302,6 @@ public class VRPointerController : MonoBehaviour {
             }
         }
 
-        // Handle haptic feedback separately
         if (newHoverObject != lastHoveredForHaptics) {
             var button = newHoverObject?.GetComponent<Button>();
             if (button != null) {
@@ -303,7 +315,9 @@ public class VRPointerController : MonoBehaviour {
 
         lastHoveredObject = newHoverObject;
     }
+    #endregion
 
+    #region Haptics
     private void ProvideTactileFeedback(uint controllerIndex, float strength = -1) {
         if (controllerIndex == OpenVR.k_unTrackedDeviceIndexInvalid) return;
         
@@ -313,4 +327,5 @@ public class VRPointerController : MonoBehaviour {
             (ushort)(strength < 0 ? hapticPulseStrength * 3999 : strength * 3999)
         );
     }
+    #endregion
 }
