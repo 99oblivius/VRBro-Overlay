@@ -242,11 +242,26 @@ public class VRPointerController : MonoBehaviour {
 
             if (exceededThreshold) {
                 float scrollDelta = delta.y * scrollSensitivity / overlayCamera.pixelHeight;
-                var contentPos = activeScrollRect.content.anchoredPosition;
+                var contentPos = activeScrollRect.content.localPosition;
                 contentPos.y = Mathf.Lerp(contentPos.y, contentPos.y + scrollDelta * 100f, Time.deltaTime * 10f);
-                activeScrollRect.content.anchoredPosition = contentPos;
+                activeScrollRect.content.localPosition = contentPos;
+                
+                UpdateScrollbar();
             }
         }
+    }
+
+    private void UpdateScrollbar() {
+        RectTransform sceneList = overlay.sceneListScroll.GetComponent<RectTransform>();
+        RectTransform content = overlay.sceneListScroll.content;
+        RectTransform scrollbar = overlay.scrollbar;
+        float offsetY = 5f;
+        float endY = sceneList.sizeDelta.y - scrollbar.sizeDelta.y - offsetY;
+
+        float normalizedDisplacement = Mathf.Clamp01(content.localPosition.y / (content.sizeDelta.y - sceneList.sizeDelta.y));
+
+        float scrollPosition = Mathf.Lerp(offsetY, endY, normalizedDisplacement);
+        scrollbar.anchoredPosition = new Vector3(92f, -scrollPosition, -3f);
     }
 
     private void HandleHoverStateChange(GameObject newHoverObject) {

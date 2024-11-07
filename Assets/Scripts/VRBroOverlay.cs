@@ -59,7 +59,8 @@ public class VRBroOverlay : MonoBehaviour {
     [SerializeField] private Camera overlayCamera;
     [SerializeField] private Canvas overlayCanvas;
     [SerializeField] private RectTransform menuContainer;
-    [SerializeField] private ScrollRect sceneListScroll;
+    [SerializeField] public ScrollRect sceneListScroll;
+    [SerializeField] public RectTransform scrollbar;
     [SerializeField] private Button sceneButtonPrefab;
     [SerializeField] private RectTransform cursor;
     
@@ -253,6 +254,7 @@ public class VRBroOverlay : MonoBehaviour {
 
         CreateSceneButtons(scenesPayload.Split('\0'));
         UpdateMenuScaling();
+        UpdateScrollbarScaling();
     }
 
     private void ClearSceneButtons() {
@@ -283,6 +285,20 @@ public class VRBroOverlay : MonoBehaviour {
         rectMenuBg.sizeDelta = rectMenuBorder.sizeDelta = new Vector2(200, UIYScaling);
         rectMenuBottom.anchoredPosition = new Vector2(0, -UIYScaling);
         contentTransform.sizeDelta = new Vector2(190, YScaling);
+    }
+
+    private void UpdateScrollbarScaling() {
+        var sceneListHeight = sceneListScroll.GetComponent<RectTransform>().sizeDelta.y;
+        var contentHeight = sceneListScroll.content.sizeDelta.y;
+        
+        if (contentHeight > sceneListHeight) {
+            scrollbar.sizeDelta = new Vector2(3.5f, 290f * sceneListHeight / contentHeight);
+            scrollbar.gameObject.SetActive(true);
+            sceneListScroll.GetComponent<RectTransform>().localPosition = new Vector3(-3f, -3f, -2f);
+        } else {
+            scrollbar.gameObject.SetActive(false);
+            sceneListScroll.GetComponent<RectTransform>().localPosition = new Vector3(0f, -3f, -2f);
+        }
     }
 
     private void AddSceneButton(string sceneName) {
