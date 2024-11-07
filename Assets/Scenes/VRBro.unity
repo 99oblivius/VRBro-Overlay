@@ -1240,7 +1240,7 @@ MonoBehaviour:
   menuContainer: {fileID: 1863673009}
   sceneListScroll: {fileID: 1635750602}
   scrollbar: {fileID: 988906331}
-  sceneButtonPrefab: {fileID: 1984615276503997135, guid: 4884ecc7b042e484380af15844f4fa18, type: 3}
+  sceneButtonPrefab: {fileID: 6277009626438163071, guid: 91a430dad7a35354bbe6b42c11f33f28, type: 3}
   cursor: {fileID: 178149298}
   renderTexture: {fileID: 8400000, guid: d94709d3945134b4eb4bf76e71d2c15a, type: 2}
   graphicRaycaster: {fileID: 1863673010}

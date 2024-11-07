@@ -7,9 +7,10 @@ public class SceneButton : MonoBehaviour {
     [SerializeField] public TextMeshProUGUI buttonText;
     [SerializeField] public Image backgroundImage;
     
-    private static readonly Color32 NormalColor = new(61, 68, 80, 255);
-    private static readonly Color32 HoverColor = new(88, 97, 112, 255);
-    private static readonly Color32 PressedColor = new(42, 47, 56, 255);
+    public static readonly Color32 NormalColor = new(61, 68, 80, 255);
+    public static readonly Color32 HoverColor = new(88, 97, 112, 255);
+    public static readonly Color32 PressedColor = new(42, 47, 56, 255);
+    public static readonly Color32 ActiveColor = new(116, 132, 117, 255);
     
     private void Awake() {
         if (button == null) button = GetComponent<Button>();

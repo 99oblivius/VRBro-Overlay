@@ -96,7 +96,7 @@ public class VRBroOverlay : MonoBehaviour {
     private ulong overlayHandle = OpenVR.k_ulOverlayHandleInvalid;
     private string logoPath;
     private List<Button> sceneButtons = new();
-    private string currentScene;
+    public string currentScene;
     private Coroutine animationCoroutine;
     private bool isAnimating;
     public bool isMenuOpen { get; private set; }
@@ -307,6 +307,7 @@ public class VRBroOverlay : MonoBehaviour {
         if (buttonText != null) {
             buttonText.text = sceneName;
             buttonText.fontStyle = sceneName == currentScene ? FontStyles.Bold : FontStyles.Normal;
+            buttonInstance.GetComponent<Image>().color = sceneName == currentScene ? SceneButton.ActiveColor : SceneButton.NormalColor;
         }
         buttonInstance.onClick.AddListener(() => SelectScene(sceneName));
         sceneButtons.Add(buttonInstance);

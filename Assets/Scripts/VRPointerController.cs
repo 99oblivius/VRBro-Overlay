@@ -198,7 +198,7 @@ public class VRPointerController : MonoBehaviour {
         } else {
             cursor.gameObject.SetActive(false);
             if (!isDragging) {
-                lastHoveredObject = null;
+                HandleHoverStateChange(null);
             }
         }
     }
@@ -265,18 +265,28 @@ public class VRPointerController : MonoBehaviour {
     }
 
     private void HandleHoverStateChange(GameObject newHoverObject) {
-        // Update regular hover state for visual feedback
+        // Exit state handling
         if (lastHoveredObject != null) {
             var button = lastHoveredObject.GetComponent<Button>();
             if (button != null) {
                 button.OnPointerExit(null);
+                
+                // Check if this is the current scene button
+                var buttonText = button.GetComponentInChildren<TMP_Text>();
+                bool isCurrentScene = buttonText != null && 
+                                    buttonText.text == overlay.currentScene;
+                
+                // Only reset to normal color if it's not the current scene
+                button.GetComponent<Image>().color = isCurrentScene ? SceneButton.ActiveColor : SceneButton.NormalColor;
             }
         }
 
+        // Enter state handling
         if (newHoverObject != null) {
             var button = newHoverObject.GetComponent<Button>();
             if (button != null) {
                 button.OnPointerEnter(null);
+                button.GetComponent<Image>().color = SceneButton.HoverColor;
             }
         }
 
@@ -291,6 +301,8 @@ public class VRPointerController : MonoBehaviour {
             }
             lastHoveredForHaptics = newHoverObject;
         }
+
+        lastHoveredObject = newHoverObject;
     }
 
     private void ProvideTactileFeedback(uint controllerIndex, float strength = -1) {
