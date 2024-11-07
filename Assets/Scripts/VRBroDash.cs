@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 public class VRBroDash : MonoBehaviour
 {
-    [SerializeField] private VRBro VRBro;
     public RenderTexture renderTexture;
     public GraphicRaycaster graphicRaycaster;
     public EventSystem eventSystem;

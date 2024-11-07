@@ -21,7 +21,6 @@ public class VRPointerController : MonoBehaviour {
     [SerializeField] private float scrollSensitivity = 1f;
     
     [Header("Haptic Feedback")]
-    [SerializeField] private float hapticPulseDuration = 0.05f;
     [SerializeField] private float hapticPulseStrength = 0.3f;
 
     private Camera overlayCamera;

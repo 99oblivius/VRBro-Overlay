@@ -55,9 +55,7 @@ public class VRBroOverlay : MonoBehaviour {
     #region Serialized Fields
     [Header("References")]
     [SerializeField] private VRBro vrBro;
-    [SerializeField] private InputController inputController;
     [SerializeField] private Camera overlayCamera;
-    [SerializeField] private Canvas overlayCanvas;
     [SerializeField] private RectTransform menuContainer;
     [SerializeField] public ScrollRect sceneListScroll;
     [SerializeField] public RectTransform scrollbar;

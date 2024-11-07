@@ -14,7 +14,6 @@ namespace TMPro.Examples
         public Font TextMeshFont;
 
         private TextMeshPro m_textMeshPro;
-        private TextContainer m_textContainer;
         private TextMesh m_textMesh;
 
         private const string label01 = "The <#0050FF>count is: </color>{0}";
