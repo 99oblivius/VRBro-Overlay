@@ -6,7 +6,9 @@ VRBro Overlay is a SteamVR companion application that provides seamless control 
 
 ## Features
 - Intuitive and adjustable VR controller bindings for OBS control
-- Wrist-mounted menu for scene access
+- Wrist-mounted menu for scene access  
+![VRBroMenu Example](Assets/Resources/VRBroMenu-example.png)
+![VRBroDash Example](Assets/Resources/VRBroDash-example.png)
 - Support for OBS functionalities:
   - Start/Stop Streaming
   - Start/Stop Recording
